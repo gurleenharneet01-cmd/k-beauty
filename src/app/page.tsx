@@ -1,629 +1,280 @@
-
+// K-Beauty — Color & Skin Advisor (Single-file React + Tailwind)
+// Features (all free, client-side):
+// • Undertone & best-color palette detector (from uploaded photo or manual input)
+// • Skin type detector: quick questionnaire + optional selfie heuristics
+// • "Avoid" guidance and personalized tips for skin health
+// • Ingredient scanner (paste list) with flags
+// • Local storage (localforage) so nothing requires payment or server
+// • Export/import user profile JSON
+// How to use: drop into src/app/page.tsx in a React + Tailwind project.
 'use client';
 
-import React, { useEffect, useState, useRef, useMemo } from 'react';
-import { v4 as uuidv4 } from 'uuid';
-import {
-  GoogleAuthProvider,
-  signInWithPopup,
-  signOut,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-} from 'firebase/auth';
-import {
-  collection,
-  doc,
-  setDoc,
-  addDoc,
-  getDoc,
-  getDocs,
-  query,
-  orderBy,
-  serverTimestamp,
-  updateDoc,
-  deleteDoc,
-  type Firestore,
-} from 'firebase/firestore';
-import { getStorage, ref as sref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { useFirebase } from '@/firebase'; // Use the provider hook
+import React, { useEffect, useRef, useState, ChangeEvent } from 'react';
+import localforage from 'localforage';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import Fuse from 'fuse.js';
 
+localforage.config({ name: 'kbeauty_color_advisor' });
 
-// ------------------
-// Utilities
-// ------------------
-const uid = () => uuidv4().split('-')[0];
+const COLOR_PALETTES: Record<string, string[]> = {
+  'Warm Spring': ['#FFDAB3', '#FFA07A', '#FFD700', '#FF6F61', '#FFC0CB'],
+  'Warm Autumn': ['#C68642', '#8B4513', '#D2691E', '#A0522D', '#B87333'],
+  'Cool Summer': ['#AEC6CF', '#B0E0E6', '#778899', '#C3CDE6', '#D8BFD8'],
+  'Cool Winter': ['#0F52BA', '#191970', '#8A2BE2', '#DC143C', '#2F4F4F'],
+  'Neutral': ['#F5F5DC', '#E6E6FA', '#F0E68C', '#D2B48C', '#C0C0C0'],
+};
 
-function logEvent(db: Firestore | null, name: string, payload = {}) {
-  console.log(`[event] ${name}`, payload);
-  if (!db) return;
-  // Optionally write to Firestore for analytics
-  try {
-    const col = collection(db, 'analytics');
-    addDoc(col, { name, payload: JSON.stringify(payload), ts: serverTimestamp() });
-  } catch (e) {
-    // ignore in dev
-  }
-}
-
-// ------------------
-// Mock data (used if Firestore empty)
-// ------------------
-const SAMPLE_PRODUCTS = [
-  {
-    id: 'p1',
-    title: 'Glass Skin Serum',
-    brand: 'SeoulGlow',
-    price: 28,
-    tags: ['serum', 'hydration', 'glowy'],
-    description: 'Brightening serum for dewy glass-skin finish.',
-    imageUrl: 'https://picsum.photos/seed/p1/200/200',
-  },
-  {
-    id: 'p2',
-    title: 'Centella Rescue Cream',
-    brand: 'JejuCalm',
-    price: 18,
-    tags: ['cream', 'sensitive'],
-    description: 'Repairing cream with centella asiatica extract.',
-    imageUrl: 'https://picsum.photos/seed/p2/200/200',
-  },
-  {
-    id: 'p3',
-    title: 'SPF 50+ Moist Sunscreen',
-    brand: 'SunBarrier',
-    price: 22,
-    tags: ['sunscreen', 'spf', 'daily'],
-    description: 'Non-greasy daily sunscreen to protect your glow.',
-    imageUrl: 'https://picsum.photos/seed/p3/200/200',
-  },
+const SAFETY_RULES = [
+  { keyword: 'paraben', flag: 'Potential irritant/preservative' },
+  { keyword: 'fragrance', flag: 'Common sensitizer' },
+  { keyword: 'alcohol', flag: 'Can be drying (depends on type)' },
+  { keyword: 'niacinamide', flag: 'Generally beneficial' },
+  { keyword: 'hyaluron', flag: 'Hydrating' },
 ];
 
-// ------------------
-// Simple skin analysis engine (rule-based)
-// ------------------
-function analyzeSkinFromQuiz(answers: Record<string, number>) {
-  const score = Object.values(answers).reduce((a, b) => a + b, 0);
-  const types: string[] = [];
-  if (answers.oiliness >= 3 && answers.acne >= 2) types.push('Acne-Prone');
-  if (answers.dryness >= 3) types.push('Dry');
-  if (answers.sensitivity >= 3) types.push('Sensitive');
-  if (answers.pigmentation >= 2) types.push('Pigmented');
-  if (types.length === 0) types.push('Normal/Combination');
-  const recommended: string[] = [];
-  if (types.includes('Acne-Prone')) recommended.push('light gel cleanser', 'oil-control serum');
-  if (types.includes('Dry')) recommended.push('hydrating serum', 'rich cream');
-  if (types.includes('Sensitive')) recommended.push('centella-based products', 'fragrance-free');
-  if (types.includes('Pigmented')) recommended.push('vitamin C', 'niacinamide');
-  if (types.includes('Normal/Combination')) recommended.push('maintenance sunscreen', 'light serum');
-  return { types, score, recommended };
+interface QuizState {
+  oily: boolean;
+  dry: boolean;
+  sensitive: boolean;
+  acne: boolean;
+  sunburns: boolean;
 }
 
+interface ScanResults {
+    r: number;
+    g: number;
+    b: number;
+    brightness: number;
+    season: string;
+}
 
-export default function KBeautyApp() {
-  const { auth, firestore, user, isUserLoading } = useFirebase();
+export default function App() {
+  const [name, setName] = useState('');
+  const [photo, setPhoto] = useState<string | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
+  const [undertone, setUndertone] = useState<string | null>(null);
+  const [palette, setPalette] = useState<string[]>([]);
+  const [quiz, setQuiz] = useState<QuizState>({ oily: false, dry: false, sensitive: false, acne: false, sunburns: false });
+  const [skinType, setSkinType] = useState<string | null>(null);
+  const [scanResults, setScanResults] = useState<ScanResults | null>(null);
+  const [ingredients, setIngredients] = useState('');
+  const [ingFlags, setIngFlags] = useState<{ ingredient: string; flag: string }[]>([]);
   const { toast } = useToast();
-  const db = firestore;
-  const storage = db ? getStorage() : null;
-
-  const [page, setPage] = useState('home');
-  const [products, setProducts] = useState<any[]>([]);
-  const [queryTxt, setQueryTxt] = useState('');
-  const [filterTag, setFilterTag] = useState('all');
-  const [favorites, setFavorites] = useState<string[]>([]);
-  const [selfieUrl, setSelfieUrl] = useState<string | null>(null);
-  const [skinReport, setSkinReport] = useState<any | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
-
-  const fuse = useMemo(() => {
-    if (products.length > 0) {
-      return new Fuse(products, { keys: ['name', 'brand', 'tags'], threshold: 0.35 });
-    }
-    return null;
-  }, [products]);
-
-  async function fetchProducts() {
-    if (!db) return;
-    try {
-      const snap = await getDocs(collection(db, 'products'));
-      const arr = snap.docs.map(d => d.data());
-      setProducts(arr);
-      localStorage.setItem('kb_products', JSON.stringify(arr));
-    } catch (e) {
-      const cached = localStorage.getItem('kb_products');
-      if (cached) setProducts(JSON.parse(cached));
-    }
-  }
-
-  async function seedProductsIfEmpty() {
-    if (!db) return;
-    try {
-      const snap = await getDocs(collection(db, 'products'));
-      if (!snap.empty) return;
-      for (const p of SAMPLE_PRODUCTS) {
-        await setDoc(doc(db, 'products', p.id), { ...p, createdAt: serverTimestamp() });
-      }
-      console.log('Seeded sample products');
-      fetchProducts();
-    } catch (e) {
-      console.error('Seed error', e);
-    }
-  }
 
   useEffect(() => {
-    if (!db) return;
-    seedProductsIfEmpty();
-    fetchProducts();
-  }, [db]);
-
+    (async () => {
+      const p: any = await localforage.getItem('profile');
+      if (p) {
+        setName(p.name || '');
+        setQuiz(p.quiz || { oily: false, dry: false, sensitive: false, acne: false, sunburns: false });
+        setUndertone(p.undertone || null);
+        setPalette(p.palette || []);
+      }
+    })();
+  }, []);
 
   useEffect(() => {
-    if (user && db) {
-      getDoc(doc(db, 'users', user.uid))
-        .then(ud => {
-          if (ud.exists()) setFavorites(ud.data().favorites || []);
-        })
-        .catch(console.error);
-    } else {
-      setFavorites([]);
-    }
-  }, [user, db]);
+    localforage.setItem('profile', { name, quiz, undertone, palette });
+  }, [name, quiz, undertone, palette]);
 
-  async function handleSignUp(email, password, displayName) {
-    if (!auth || !db) return;
-    try {
-      const cred = await createUserWithEmailAndPassword(auth, email, password);
-      await setDoc(doc(db, 'users', cred.user.uid), {
-        uid: cred.user.uid,
-        email,
-        displayName: displayName || email.split('@')[0],
-        favorites: [],
-        createdAt: serverTimestamp(),
-      });
-      logEvent(db, 'signup', { uid: cred.user.uid });
-    } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Sign up error', description: e.message });
-    }
-  }
-
-  async function handleSignIn(email, password) {
-    if (!auth || !db) return;
-    try {
-      const cred = await signInWithEmailAndPassword(auth, email, password);
-      logEvent(db, 'signin', { uid: cred.user.uid });
-    } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Sign in error', description: e.message });
-    }
-  }
-
-
-  async function handleGoogleSignIn() {
-    if (!auth || !db) return;
-    try {
-      const provider = new GoogleAuthProvider();
-      const res = await signInWithPopup(auth, provider);
-      const udoc = await getDoc(doc(db, 'users', res.user.uid));
-      if (!udoc.exists()) {
-        await setDoc(doc(db, 'users', res.user.uid), {
-          uid: res.user.uid,
-          email: res.user.email,
-          displayName: res.user.displayName,
-          favorites: [],
-          createdAt: serverTimestamp(),
-        });
-      }
-      logEvent(db, 'google_signin', { uid: res.user.uid });
-    } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Google sign in error', description: e.message });
-    }
-  }
-
-  async function handleSignOut() {
-    if (!auth) return;
-    await signOut(auth);
-    logEvent(db, 'signout', {});
-  }
-
-  async function toggleFavorite(pid: string) {
-    if (!user || !db) return toast({ title: 'Please sign in to save favorites' });
-    const uref = doc(db, 'users', user.uid);
-    const newFavs = favorites.includes(pid) ? favorites.filter(x => x !== pid) : [...favorites, pid];
-    setFavorites(newFavs);
-    try {
-      await updateDoc(uref, { favorites: newFavs });
-    } catch (e) {
-      await setDoc(uref, { uid: user.uid, favorites: newFavs }, { merge: true });
-    }
-    logEvent(db, 'fav_toggle', { uid: user.uid, pid });
-  }
-
-  async function uploadSelfie(file: File) {
-    if (!file || !storage) return;
-    const id = uid();
-    const storageRef = sref(storage, `selfies/${id}-${file.name}`);
-    try {
-      const snapshot = await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(snapshot.ref);
-      setSelfieUrl(url);
-      setSkinReport({ message: 'Selfie uploaded. Use the Skin Quiz for deeper analysis.' });
-      logEvent(db, 'selfie_upload', { uid: user?.uid || 'anon' });
-    } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Upload failed', description: e.message });
-    }
-  }
-
-  function handleSelfieInput(ev: React.ChangeEvent<HTMLInputElement>) {
-    const f = ev.target.files?.[0];
+  // handle image upload
+  const onImage = (e: ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
     if (!f) return;
     const reader = new FileReader();
-    reader.onload = e => setSelfieUrl(e.target?.result as string);
+    reader.onload = () => setPhoto(reader.result as string);
     reader.readAsDataURL(f);
-    uploadSelfie(f);
-  }
+  };
 
-  async function adminCreateProduct(p: any) {
-    if (!db) return;
-    const idp = p.id || uid();
-    const pd = { ...p, id: idp, createdAt: serverTimestamp() };
-    await setDoc(doc(db, 'products', idp), pd);
-    fetchProducts();
-    logEvent(db, 'admin_create_product', { uid: user?.uid, pid: idp });
-  }
-
-  async function adminDeleteProduct(pid: string) {
-    if (!db) return;
-    await deleteDoc(doc(db, 'products', pid));
-    fetchProducts();
-  }
-
-  const [quiz, setQuiz] = useState({ oiliness: 2, sensitivity: 1, acne: 1, dryness: 1, pigmentation: 0 });
-  function runQuizAndAnalyze() {
-    const report = analyzeSkinFromQuiz(quiz);
-    setSkinReport(report);
-    logEvent(db, 'skin_quiz', { uid: user?.uid, report });
-  }
-
-  const [recs, setRecs] = useState<any[]>([]);
-  async function recommendProductsForUser(userId: string) {
-    if (!db) return [];
-    try {
-      const userDoc = await getDoc(doc(db, 'users', userId));
-      const data = userDoc.exists() ? userDoc.data() : {};
-      const favs = data.favorites || [];
-      if (favs.length === 0) {
-        const q = query(collection(db, 'products'), orderBy('price'));
-        const snap = await getDocs(q);
-        return snap.docs.slice(0, 3).map(d => d.data());
+  // sample center pixel area and decide undertone
+  const analyzeColorFromPhoto = () => {
+    if (!photo) return toast({ variant: 'destructive', title: 'Upload a selfie or wrist photo first' });
+    const img = new Image();
+    img.src = photo;
+    img.onload = () => {
+      const c = canvasRef.current;
+      if (!c) return;
+      c.width = img.width;
+      c.height = img.height;
+      const ctx = c.getContext('2d');
+      if (!ctx) return;
+      ctx.drawImage(img, 0, 0);
+      // sample a rectangle near center or lower-left (wrist)
+      const w = Math.max(10, Math.floor(c.width * 0.08));
+      const h = Math.max(10, Math.floor(c.height * 0.05));
+      const x = Math.floor(c.width * 0.45);
+      const y = Math.floor(c.height * 0.6);
+      const data = ctx.getImageData(x, y, w, h).data;
+      let r = 0, g = 0, b = 0, count = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        r += data[i];
+        g += data[i + 1];
+        b += data[i + 2];
+        count++;
       }
-      const favTags = new Set<string>();
-      for (const pid of favs) {
-        const pdoc = await getDoc(doc(db, 'products', pid));
-        if (pdoc.exists()) (pdoc.data().tags || []).forEach((t: string) => favTags.add(t));
-      }
-      const results: { score: number, product: any }[] = [];
-      const all = await getDocs(collection(db, 'products'));
-      for (const d of all.docs) {
-        const pd = d.data();
-        if (favs.includes(pd.id)) continue;
-        const score = (pd.tags || []).filter((t: string) => favTags.has(t)).length;
-        if (score > 0) results.push({ score, product: pd });
-      }
-      results.sort((a, b) => b.score - a.score);
-      return results.slice(0, 6).map(r => r.product);
-    } catch (e) {
-      console.error('recommend error', e);
-      return [];
-    }
-  }
+      r = Math.round(r / count);
+      g = Math.round(g / count);
+      b = Math.round(b / count);
+      // simple undertone heuristic:
+      const isWarm = r - g > 8 && r - b > 6;
+      const isCool = b - r > 6 && b - g > 4;
+      const u = isWarm ? 'Warm' : isCool ? 'Cool' : 'Neutral';
+      const brightness = (r + g + b) / 3;
+      let season = 'Neutral';
+      if (u === 'Warm' && brightness > 140) season = 'Warm Spring';
+      if (u === 'Warm' && brightness <= 140) season = 'Warm Autumn';
+      if (u === 'Cool' && brightness > 130) season = 'Cool Summer';
+      if (u === 'Cool' && brightness <= 130) season = 'Cool Winter';
+      setUndertone(u);
+      setPalette(COLOR_PALETTES[season] || COLOR_PALETTES['Neutral']);
+      setScanResults({ r, g, b, brightness, season });
+    };
+  };
 
-
-  async function loadRecommendations() {
-    if (!user) return;
-    const r = await recommendProductsForUser(user.uid);
-    setRecs(r);
-  }
+  // quick questionnaire-based skin type detection
+  const detectSkinTypeFromQuiz = () => {
+    const q = quiz;
+    if (q.sensitive) return 'Sensitive';
+    if (q.oily && q.acne) return 'Oily / Acne-prone';
+    if (q.oily) return 'Oily';
+    if (q.dry) return 'Dry';
+    return 'Normal / Combination';
+  };
 
   useEffect(() => {
-    if (user) loadRecommendations();
-  }, [user]);
-  
-  const visibleProducts = useMemo(() => {
-    let results = products;
-    if (queryTxt && fuse) {
-      results = fuse.search(queryTxt).map(x => x.item);
-    } else if (queryTxt) {
-      const q = queryTxt.toLowerCase();
-      results = products.filter(p => p.title.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q));
-    }
-  
-    if (filterTag && filterTag !== 'all') {
-      results = results.filter(p => (p.tags || []).includes(filterTag));
-    }
-    
-    return results;
-  }, [queryTxt, filterTag, products, fuse]);
+    setSkinType(detectSkinTypeFromQuiz());
+  }, [quiz]);
 
-  const [routine, setRoutine] = useState<{ id: string, step: string }[]>([]);
-  function addToRoutine(step: string) {
-    setRoutine(r => [...r, { id: uid(), step }]);
-    logEvent(db, 'routine_add', { step });
-  }
-  function removeRoutine(id: string) {
-    setRoutine(r => r.filter(x => x.id !== id));
-  }
+  const analyzeIngredients = () => {
+    const tokens = ingredients.toLowerCase().split(/[,;\n]/).map(s => s.trim()).filter(Boolean);
+    const found = tokens.map(t => {
+      const r = SAFETY_RULES.find(rule => t.includes(rule.keyword));
+      return { ingredient: t, flag: r ? r.flag : 'No specific flags' };
+    });
+    setIngFlags(found);
+  };
 
-  const isAdmin = user?.email?.endsWith('@glam-lens.com') || false;
-
-  const NavButton = ({ targetPage, children }: { targetPage: string, children: React.ReactNode }) => (
-    <Button variant={page === targetPage ? "secondary" : "ghost"} onClick={() => setPage(targetPage)}>{children}</Button>
-  );
+  const exportProfile = () => {
+    const data = { name, quiz, undertone, palette, scanResults };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'kb_profile.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-pink-50 via-white to-pink-100 text-gray-800">
-      <header className="max-w-6xl mx-auto p-4 flex items-center justify-between">
-        <h1 className="text-2xl font-extrabold font-headline">K-Beauty Lab</h1>
-        <nav className="flex gap-2 items-center">
-          <NavButton targetPage='home'>Home</NavButton>
-          <NavButton targetPage='catalog'>Catalog</NavButton>
-          <NavButton targetPage='skin'>Skin Quiz</NavButton>
-          <NavButton targetPage='routine'>Routine</NavButton>
-          {isUserLoading ? <div>Loading...</div> : user ? (
-            <div className="flex items-center gap-2">
-              <span className="text-sm">Hi, {user.displayName || user.email}</span>
-              <Button variant="destructive" onClick={handleSignOut}>Sign out</Button>
-            </div>
-          ) : (
-            <AuthMini onGoogle={handleGoogleSignIn} onEmailSignIn={handleSignIn} onEmailSignUp={handleSignUp} />
-          )}
-        </nav>
-      </header>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-6">
+      <div className="max-w-4xl mx-auto space-y-6">
+        <header className="flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold">K-Beauty — Color & Skin Advisor (Free)</h1>
+            <p className="text-sm text-gray-500">Find colors that suit you, detect skin type, and learn what to avoid — no payment required.</p>
+          </div>
+        </header>
 
-      <main className="max-w-6xl mx-auto p-4 grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <section className="lg:col-span-2 space-y-4">
-          {page === 'home' && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-xl font-bold">Welcome to K-Beauty Lab</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm">Try our skin quiz, explore products, build your routine, or upload a selfie for a preview.</p>
-
-                <div className="mt-4 flex gap-4">
-                  <div className="flex-1">
-                    <Input value={queryTxt} onChange={e => setQueryTxt(e.target.value)} placeholder="Search products or brands" className="w-full" />
-                  </div>
-                  <div>
-                    <Select value={filterTag} onValueChange={setFilterTag}>
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="All Tags" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All tags</SelectItem>
-                        <SelectItem value="serum">serum</SelectItem>
-                        <SelectItem value="cream">cream</SelectItem>
-                        <SelectItem value="sunscreen">sunscreen</SelectItem>
-                        <SelectItem value="sensitive">sensitive</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Card>
-                    <CardHeader><CardTitle className="font-semibold text-lg">Try-On (Selfie)</CardTitle></CardHeader>
-                    <CardContent>
-                      <p className="text-sm">Upload a selfie and preview product swatches (AR placeholder).</p>
-                      <Input type="file" accept="image/*" onChange={handleSelfieInput} ref={fileRef} className="mt-2" />
-                      {selfieUrl && (
-                        <div className="mt-3 relative w-64 h-64 border rounded overflow-hidden">
-                          <img src={selfieUrl} alt="selfie" className="object-cover w-full h-full" />
-                          <div style={{ mixBlendMode: 'overlay', backgroundColor: '#EAB3A7' }} className="absolute left-1/4 top-1/2 w-1/2 h-8 rounded-full opacity-50 border"></div>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                
-                  <Card>
-                    <CardHeader><CardTitle className="font-semibold text-lg">Quick Skin Quiz</CardTitle></CardHeader>
-                    <CardContent>
-                      <p className="text-sm">Get a fast read and recommendations.</p>
-                      <div className="mt-3">
-                        <MiniQuiz quiz={quiz} setQuiz={setQuiz} onRun={runQuizAndAnalyze} />
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {skinReport && (
-                  <div className="mt-6 bg-pink-50 p-4 rounded-lg">
-                    <h4 className="font-semibold">Skin Report</h4>
-                    <FormattedSkinReport report={skinReport} />
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {page === 'catalog' && (
-            <div>
-              <h2 className="text-xl font-bold mb-4">Catalog</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {visibleProducts.map(p => (
-                  <Card key={p.id} className="flex gap-4 p-4">
-                    <img src={p.imageUrl} alt={p.title} className="w-28 h-28 object-cover rounded" />
-                    <div className="flex-1">
-                      <h3 className="font-semibold">{p.title}</h3>
-                      <p className="text-sm text-gray-500">{p.brand} • ${p.price}</p>
-                      <p className="text-sm mt-2">{p.description}</p>
-                      <div className="mt-2 flex gap-2 items-center">
-                        <Button onClick={() => toggleFavorite(p.id)}>{favorites.includes(p.id) ? 'Saved' : 'Save'}</Button>
-                        <Button variant="ghost" onClick={() => addToRoutine(p.title)}>Add to routine</Button>
-                      </div>
-                    </div>
-                  </Card>
-                ))}
+        <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Card>
+            <CardHeader><CardTitle>1) Upload Photo (selfie or inner wrist)</CardTitle></CardHeader>
+            <CardContent>
+              <Input type="file" accept="image/*" onChange={onImage} className="mt-2" />
+              <div className="mt-3">
+                {photo ? <img ref={imgRef} src={photo} alt="uploaded" className="max-h-48 rounded" /> : <div className="h-32 bg-gray-100 rounded flex items-center justify-center text-sm text-gray-400">No photo</div>}
               </div>
-            </div>
-          )}
-
-          {page === 'skin' && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-xl font-bold">Skin Quiz & Analysis</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <MiniQuiz quiz={quiz} setQuiz={setQuiz} onRun={runQuizAndAnalyze} />
-                {skinReport && (
-                  <div className="mt-4 bg-pink-50 p-4 rounded">
-                    <h3 className="font-semibold">Results</h3>
-                    <FormattedSkinReport report={skinReport} />
+              <div className="mt-2 flex gap-2">
+                <Button onClick={analyzeColorFromPhoto}>Analyze Color</Button>
+                <Button onClick={() => { setPhoto(null); setScanResults(null); setUndertone(null); setPalette([]); }} variant="outline">Reset</Button>
+              </div>
+              <canvas ref={canvasRef} className="hidden" />
+              {scanResults && (
+                <div className="mt-3 text-sm">
+                  <div>Detected season: <strong>{scanResults.season}</strong></div>
+                  <div>Avg color: rgb({scanResults.r},{scanResults.g},{scanResults.b}) — brightness {Math.round(scanResults.brightness)}</div>
+                  <div className="mt-2">Suggested palette:</div>
+                  <div className="flex gap-2 mt-1">
+                    {palette.map((c, i) => (<div key={i} style={{ background: c }} className="w-10 h-10 rounded shadow-sm border" title={c}></div>))}
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {page === 'routine' && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-xl font-bold">Routine Builder</CardTitle>
-                <p className="text-sm">Drag & drop is simulated — add steps below.</p>
-              </CardHeader>
-              <CardContent>
-                <div className="mt-3 flex gap-2">
-                  <Button onClick={() => addToRoutine('Cleanse')}>Add Cleanse</Button>
-                  <Button onClick={() => addToRoutine('Tone')}>Add Tone</Button>
-                  <Button onClick={() => addToRoutine('Serum')}>Add Serum</Button>
-                  <Button onClick={() => addToRoutine('Moisturize')}>Add Moisturize</Button>
                 </div>
-                <ul className="mt-4 space-y-2">
-                  {routine.map(r => (
-                    <li key={r.id} className="flex items-center justify-between p-2 border rounded">
-                      <span>{r.step}</span>
-                      <Button variant="ghost" onClick={() => removeRoutine(r.id)}>Remove</Button>
-                    </li>
-                  ))}
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader><CardTitle>2) Quick Skin Quiz</CardTitle></CardHeader>
+            <CardContent>
+              <div className="mt-2 space-y-3 text-sm">
+                <div className="flex items-center space-x-2"><Checkbox id="q-oily" checked={quiz.oily} onCheckedChange={c=>setQuiz(q=>({...q, oily:!!c}))} /><label htmlFor="q-oily">I often have shine/oily T-zone</label></div>
+                <div className="flex items-center space-x-2"><Checkbox id="q-dry" checked={quiz.dry} onCheckedChange={c=>setQuiz(q=>({...q, dry:!!c}))} /><label htmlFor="q-dry">My skin feels tight/dry after cleansing</label></div>
+                <div className="flex items-center space-x-2"><Checkbox id="q-sensitive" checked={quiz.sensitive} onCheckedChange={c=>setQuiz(q=>({...q, sensitive:!!c}))} /><label htmlFor="q-sensitive">Skin reacts to new products easily</label></div>
+                <div className="flex items-center space-x-2"><Checkbox id="q-acne" checked={quiz.acne} onCheckedChange={c=>setQuiz(q=>({...q, acne:!!c}))} /><label htmlFor="q-acne">I get frequent pimples</label></div>
+                <div className="flex items-center space-x-2"><Checkbox id="q-sunburns" checked={quiz.sunburns} onCheckedChange={c=>setQuiz(q=>({...q, sunburns:!!c}))} /><label htmlFor="q-sunburns">I burn easily in the sun</label></div>
+              </div>
+              <div className="mt-4">
+                <div>Detected skin profile: <strong>{skinType}</strong></div>
+                <div className="mt-2 text-sm text-gray-500">Personalized tips:</div>
+                <ul className="text-sm mt-1 list-disc list-inside">
+                  {skinType === 'Oily' && <li>Use gentle, water-based cleansers and non-comedogenic moisturizers.</li>}
+                  {skinType === 'Oily / Acne-prone' && <><li >Consider products with salicylic acid and niacinamide.</li ><li >Avoid heavy oils and pore-clogging ingredients.</li ></>}
+                  {skinType === 'Dry' && <li>Use occlusive moisturizers, hyaluronic acid serums, and avoid harsh soaps.</li>}
+                  {skinType === 'Sensitive' && <li>Patch-test new products and avoid fragrance-heavy formulas.</li>}
+                  {skinType === 'Normal / Combination' && <li>Maintain a balanced routine: gentle cleanser, light moisturizer, SPF.</li>}
+                  {quiz.sunburns && <li>Use broad-spectrum SPF 30+ daily and reapply when outdoors.</li>}
                 </ul>
-              </CardContent>
-            </Card>
-          )}
+              </div>
+            </CardContent>
+          </Card>
         </section>
 
-        <aside className="space-y-4">
-          {isAdmin && (
-            <Card className="p-4">
-              <h3 className="font-semibold">Admin</h3>
-              <AdminPanel onCreate={adminCreateProduct} onDelete={adminDeleteProduct} products={products} />
+        <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card>
+                <CardHeader><CardTitle>3) What to Avoid</CardTitle></CardHeader>
+                <CardContent>
+                    <ul className="list-disc list-inside text-sm mt-2 space-y-1">
+                        <li>Avoid over-exfoliation — limit to 1–2x/week depending on skin sensitivity.</li>
+                        <li>Avoid mixing strong acids and retinoids without guidance.</li>
+                        <li>Avoid products with high alcohol content if you are dry or sensitive.</li>
+                        <li>Avoid heavy fragrances if you are prone to sensitivity or acne.</li>
+                        <li>Always wear SPF — sun damage accelerates aging and pigmentation.</li>
+                    </ul>
+                </CardContent>
             </Card>
-          )}
-        </aside>
-      </main>
 
-      <footer className="max-w-6xl mx-auto p-4 text-center text-xs text-gray-500">Built with ❤️ — K-Beauty Lab prototype</footer>
-    </div>
-  );
-}
+            <Card>
+                <CardHeader><CardTitle>4) Ingredient Scanner</CardTitle></CardHeader>
+                <CardContent>
+                    <Textarea value={ingredients} onChange={e => setIngredients(e.target.value)} placeholder="Paste ingredient list separated by commas" rows={4}></Textarea>
+                    <div className="mt-2 flex gap-2">
+                    <Button onClick={analyzeIngredients}>Scan</Button>
+                    <Button onClick={() => { setIngredients(''); setIngFlags([]); }} variant="outline">Clear</Button>
+                    </div>
+                    <div className="mt-2 text-sm space-y-1">
+                    {ingFlags.map((f, i) => (<div key={i} className="p-2 border rounded"><strong >{f.ingredient}</strong >: {f.flag}</div>))}
+                    </div>
+                </CardContent>
+            </Card>
+        </section>
 
-// ------------------
-// Subcomponents
-// ------------------
+        <Card>
+            <CardHeader><CardTitle>Save / Export</CardTitle></CardHeader>
+            <CardContent>
+                <div className="mt-2 flex gap-2 items-center">
+                    <Input value={name} onChange={e => setName(e.target.value)} placeholder="Your name (optional)" className="max-w-xs" />
+                    <Button onClick={exportProfile} variant="secondary">Export Profile</Button>
+                    <Button onClick={() => { localforage.clear(); toast({title: "Local data cleared"}); }} variant="destructive">Clear Local Data</Button>
+                </div>
+            </CardContent>
+        </Card>
 
-function AuthMini({ onGoogle, onEmailSignIn, onEmailSignUp }: { onGoogle: () => void, onEmailSignIn: (e: string, p: string) => void, onEmailSignUp: (e: string, p: string, d: string) => void }) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
-  return (
-    <div className="p-2 flex gap-2 items-center">
-      <Input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
-      <Input placeholder="Password" type="password" value={password} onChange={e => setPassword(e.target.value)} />
-      <Button onClick={() => onEmailSignIn(email, password)}>Sign in</Button>
-      <div className="hidden sm:flex gap-2 items-center">
-        <Input placeholder="Display" value={name} onChange={e => setName(e.target.value)} />
-        <Button variant="ghost" onClick={() => onEmailSignUp(email, password, name)}>Sign up</Button>
-        <Button variant="outline" onClick={onGoogle}>
-            <svg className="w-4 h-4 mr-2" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512"><path fill="currentColor" d="M488 261.8C488 403.3 381.5 512 244 512 111.3 512 0 400.7 0 264.1 0 127.5 111.3 16 244 16c73.1 0 134.3 29.3 178.6 71.7l-63.5 61.8C332.3 125.9 292.1 104 244 104c-82.3 0-149.3 67-149.3 149.3s67 149.3 149.3 149.3c96.1 0 133.3-67.9 138-104.4H244v-74.3h234.3c4.7 25.5 7.7 51.9 7.7 82.5z"></path></svg>
-            Google
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function FormattedSkinReport({ report }: { report: any }) {
-  if (!report) return null;
-
-  if (report.message) {
-    return <p className="text-sm">{report.message}</p>;
-  }
-
-  const types = report.types?.join(', ') || 'N/A';
-  const recs = report.recommended?.join(', ') || 'N/A';
-
-  return (
-    <p className="text-sm">
-      Your skin type appears to be <strong>{types}</strong>. 
-      Based on this, we recommend products with ingredients like <em>{recs}</em>.
-    </p>
-  );
-}
-
-
-function MiniQuiz({ quiz, setQuiz, onRun }: { quiz: any, setQuiz: (q: any) => void, onRun: () => void }) {
-  return (
-    <div className="space-y-3">
-      {['oiliness', 'sensitivity', 'acne', 'dryness', 'pigmentation'].map(k => (
-        <div key={k}>
-          <label className="block text-sm font-medium capitalize">{k}</label>
-          <input type="range" min="0" max="4" value={quiz[k]} onChange={e => setQuiz({ ...quiz, [k]: Number(e.target.value) })} className="w-full" />
-        </div>
-      ))}
-      <div className="flex gap-2">
-        <Button onClick={onRun}>Run Analysis</Button>
-        <Button variant="ghost" onClick={() => setQuiz({ oiliness: 2, sensitivity: 1, acne: 1, dryness: 1, pigmentation: 0 })}>Reset</Button>
-      </div>
-    </div>
-  );
-}
-
-function AdminPanel({ onCreate, onDelete, products }: { onCreate: (p: any) => void, onDelete: (pid: string) => void, products: any[] }) {
-  const [form, setForm] = useState({ title: '', brand: '', price: 0, tags: '', description: '', imageUrl: '' });
-  async function submit() {
-    const p = { ...form, tags: form.tags.split(',').map(t => t.trim()), price: Number(form.price) };
-    await onCreate(p);
-    setForm({ title: '', brand: '', price: 0, tags: '', description: '', imageUrl: '' });
-  }
-  return (
-    <div>
-      <div className="space-y-2">
-        <Input placeholder="Title" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
-        <Input placeholder="Brand" value={form.brand} onChange={e => setForm({ ...form, brand: e.target.value })} />
-        <Input placeholder="Price" type="number" value={form.price} onChange={e => setForm({ ...form, price: Number(e.target.value) })} />
-        <Input placeholder="Tags (comma)" value={form.tags} onChange={e => setForm({ ...form, tags: e.target.value })} />
-        <Input placeholder="Image URL" value={form.imageUrl} onChange={e => setForm({ ...form, imageUrl: e.target.value })} />
-        <Textarea placeholder="Description" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
-        <div className="flex gap-2">
-          <Button onClick={submit}>Create</Button>
-        </div>
-      </div>
-
-      <div className="mt-4">
-        <h4 className="font-semibold">Existing Products</h4>
-        <ul className="space-y-2 mt-2">
-          {products.map(p => (
-            <li key={p.id} className="flex items-center justify-between border p-2 rounded">
-              <div>{p.title} ({p.brand})</div>
-              <div className="flex gap-2">
-                <Button variant="ghost" size="sm" onClick={() => onDelete(p.id)}>Delete</Button>
-              </div>
-            </li>
-          ))}
-        </ul>
+        <footer className="text-center text-sm text-gray-500">
+            This app is a free, client-side demo. For clinical or precise color-matching integrate professional colorimeters or consult a certified color analyst/dermatologist.
+        </footer>
       </div>
     </div>
   );
