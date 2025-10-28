@@ -6,8 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Palette, Wand2 } from 'lucide-react';
-import { provideReasoningForColorRecommendations } from '@/ai/flows/provide-reasoning-color-recommendations';
-import { suggestAlternativeColorPalette } from '@/ai/flows/suggest-alternative-color-palette';
+// import { provideReasoningForColorRecommendations } from '@/ai/flows/provide-reasoning-color-recommendations';
+// import { suggestAlternativeColorPalette } from '@/ai/flows/suggest-alternative-color-palette';
 
 
 function ColorSwatch({ color, name }: { color: string; name: string }) {
@@ -31,33 +31,33 @@ export default function AnalysisResults({ analysis }: { analysis: AnalysisResult
     const [isAltLoading, setIsAltLoading] = React.useState(false);
 
     const handleGetReasoning = async () => {
-        setIsReasoningLoading(true);
-        try {
-            const result = await provideReasoningForColorRecommendations({
-                skinTone: analysis.skinTone,
-                fashionColors: analysis.recommendations.fashion,
-                makeupColors: analysis.recommendations.makeup,
-            });
-            setFashionReasoning(result.fashionReasoning);
-            setMakeupReasoning(result.makeupReasoning);
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setIsReasoningLoading(false);
-        }
+        // setIsReasoningLoading(true);
+        // try {
+        //     const result = await provideReasoningForColorRecommendations({
+        //         skinTone: analysis.skinTone,
+        //         fashionColors: analysis.recommendations.fashion,
+        //         makeupColors: analysis.recommendations.makeup,
+        //     });
+        //     setFashionReasoning(result.fashionReasoning);
+        //     setMakeupReasoning(result.makeupReasoning);
+        // } catch (e) {
+        //     console.error(e);
+        // } finally {
+        //     setIsReasoningLoading(false);
+        // }
     };
 
     const handleSuggestAlternatives = async () => {
-        setIsAltLoading(true);
-        try {
-            const result = await suggestAlternativeColorPalette({ skinTone: analysis.skinTone });
-            setAlternativePalette(result.recommendations);
-        } catch (e) {
-            console.error(e);
-        }
-        finally {
-            setIsAltLoading(false);
-        }
+        // setIsAltLoading(true);
+        // try {
+        //     const result = await suggestAlternativeColorPalette({ skinTone: analysis.skinTone });
+        //     setAlternativePalette(result.recommendations);
+        // } catch (e) {
+        //     console.error(e);
+        // }
+        // finally {
+        //     setIsAltLoading(false);
+        // }
     };
 
 
@@ -97,7 +97,7 @@ export default function AnalysisResults({ analysis }: { analysis: AnalysisResult
                 </CardHeader>
                 <CardContent className="space-y-6 p-4">
                     {renderPalette('Recommended Fashion Colors', analysis.recommendations.fashion)}
-                    <div className="rounded-lg border bg-muted/20 p-3 text-sm">
+                    {/* <div className="rounded-lg border bg-muted/20 p-3 text-sm">
                         {fashionReasoning ? (
                             <p>{fashionReasoning}</p>
                         ) : (
@@ -111,10 +111,10 @@ export default function AnalysisResults({ analysis }: { analysis: AnalysisResult
                                 {isReasoningLoading ? "Thinking..." : "Why these colors?"}
                             </Button>
                         )}
-                    </div>
+                    </div> */}
 
                     {renderPalette('Recommended Makeup Colors', analysis.recommendations.makeup)}
-                    <div className="rounded-lg border bg-muted/20 p-3 text-sm">
+                    {/* <div className="rounded-lg border bg-muted/20 p-3 text-sm">
                         {makeupReasoning ? (
                             <p>{makeupReasoning}</p>
                         ) : (
@@ -128,9 +128,9 @@ export default function AnalysisResults({ analysis }: { analysis: AnalysisResult
                                 {isReasoningLoading ? "Thinking..." : "Why these shades?"}
                             </Button>
                         )}
-                    </div>
+                    </div> */}
 
-                    {alternativePalette ? (
+                    {/* {alternativePalette ? (
                         <div className="space-y-4 rounded-lg border border-dashed p-4">
                             <h3 className="text-center font-headline text-xl">Alternative Palettes</h3>
                             {renderPalette('Fashion Alternatives', alternativePalette.fashion)}
@@ -147,7 +147,7 @@ export default function AnalysisResults({ analysis }: { analysis: AnalysisResult
                                 {isAltLoading ? "Exploring..." : "Suggest Alternatives"}
                             </Button>
                         </div>
-                    )}
+                    )} */}
                 </CardContent>
             </Card>
 
