@@ -2,7 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
-import { ArrowRight, Sparkles } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
 export default function Home() {
@@ -26,11 +26,6 @@ export default function Home() {
                 <Button asChild size="lg">
                   <Link href="/analysis">
                     Analyze Your Skin Tone <ArrowRight className="ml-2 h-5 w-5" />
-                  </Link>
-                </Button>
-                <Button asChild variant="secondary" size="lg">
-                  <Link href="/create">
-                    Enter the BeautyLab <Sparkles className="ml-2 h-5 w-5" />
                   </Link>
                 </Button>
               </div>

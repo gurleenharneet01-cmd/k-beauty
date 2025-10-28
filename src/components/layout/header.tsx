@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Palette, Sparkles } from 'lucide-react';
+import { Palette } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function Header() {
@@ -11,7 +11,6 @@ export function Header() {
 
   const navItems = [
     { href: '/analysis', label: 'Analyzer' },
-    { href: '/create', label: 'Create' },
   ];
 
   return (
@@ -31,7 +30,6 @@ export function Header() {
                 pathname?.startsWith(item.href) ? 'text-foreground' : 'text-foreground/60'
               )}
             >
-              {item.href === '/create' && <Sparkles className="h-4 w-4 text-accent" />}
               {item.label}
             </Link>
           ))}
