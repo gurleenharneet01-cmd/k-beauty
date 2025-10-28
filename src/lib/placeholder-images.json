@@ -5,42 +5,6 @@
       "description": "A portrait of a woman with a natural makeup look.",
       "imageUrl": "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHx3b21hbiUyMHBvcnRyYWl0fGVufDB8fHx8MTc2MTU5OTgzN3ww&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "woman portrait"
-    },
-    {
-      "id": "community-1",
-      "description": "Fashion style inspiration.",
-      "imageUrl": "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxmYXNoaW9uJTIwc3R5bGV8ZW58MHx8fHwxNzYxNjM2NDI1fDA&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "fashion style"
-    },
-    {
-      "id": "community-2",
-      "description": "Makeup art inspiration.",
-      "imageUrl": "https://images.unsplash.com/photo-1751222350223-0dfc35993f50?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxtYWtldXAlMjBhcnR8ZW58MHx8fHwxNzYxNjY1Mjc1fDA&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "makeup art"
-    },
-    {
-      "id": "community-3",
-      "description": "Woman in a colorful outfit.",
-      "imageUrl": "https://images.unsplash.com/photo-1619166719123-471cee9ce91e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxjb2xvcmZ1bCUyMG91dGZpdHxlbnwwfHx8fDE3NjE2NjUyNzV8MA&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "colorful outfit"
-    },
-    {
-      "id": "community-4",
-      "description": "Close-up of eye makeup.",
-      "imageUrl": "https://images.unsplash.com/photo-1594647210801-5124307f3d51?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxleWUlMjBtYWtldXB8ZW58MHx8fHwxNzYxNjY1Mjc1fDA&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "eye makeup"
-    },
-    {
-      "id": "community-5",
-      "description": "Street style fashion.",
-      "imageUrl": "https://images.unsplash.com/photo-1594035795072-3fcd236b7d83?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8c3RyZWV0JTIwc3R5bGV8ZW58MHx8fHwxNzYxNTgyNTM3fDA&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "street style"
-    },
-    {
-      "id": "community-6",
-      "description": "Vibrant lipstick look.",
-      "imageUrl": "https://images.unsplash.com/photo-1542452255191-c85a98f2c5d1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxsaXBzdGlja3xlbnwwfHx8fDE3NjE2NjUyNzV8MA&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "lipstick"
     }
   ]
 }

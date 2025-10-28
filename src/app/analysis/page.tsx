@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, useActionState } from 'react';
+import { useEffect, useState } from 'react';
+import { useActionState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { analyzeSkinTone, type FormState } from './actions';
 import { AnalysisForm } from './components/analysis-form';
@@ -33,10 +34,10 @@ export default function AnalysisPage() {
         <div className="space-y-6">
           <div className="text-center md:text-left">
             <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-              AI Skin Analyzer
+              AI Skin Tone Analyzer
             </h1>
             <p className="mt-2 text-lg text-muted-foreground">
-              Upload a clear, well-lit photo of your face to get started.
+              Discover your perfect color palette. Upload a clear, well-lit photo of your face to get started.
             </p>
           </div>
           <AnalysisForm 
@@ -50,7 +51,7 @@ export default function AnalysisPage() {
           {isPending ? (
             <AnalysisSkeleton />
           ) : (
-            state.data && <AnalysisResults result={state.data} imagePreviewUrl={imagePreviewUrl} />
+            state.data && imagePreviewUrl && <AnalysisResults result={state.data} imagePreviewUrl={imagePreviewUrl} />
           )}
         </div>
       </div>

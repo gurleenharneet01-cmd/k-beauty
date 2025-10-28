@@ -2,7 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Sparkles } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
 export default function Home() {
@@ -16,21 +16,21 @@ export default function Home() {
             <div className="flex flex-col justify-center space-y-4">
               <div className="space-y-2">
                 <h1 className="text-3xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none font-headline">
-                  Discover Your Perfect Palette with GlamLens AI
+                  From Vision to Reality with GlamLens AI
                 </h1>
                 <p className="max-w-[600px] text-muted-foreground md:text-xl font-body">
-                  Upload your photo and let our AI analyze your skin tone to reveal the fashion and makeup colors that make you shine.
+                  Analyze your skin tone to find your perfect colors, then use that inspiration to design and customize your own unique beauty products.
                 </p>
               </div>
               <div className="flex flex-col gap-2 min-[400px]:flex-row">
                 <Button asChild size="lg">
                   <Link href="/analysis">
-                    Start Analysis <ArrowRight className="ml-2 h-5 w-5" />
+                    Analyze Your Skin Tone <ArrowRight className="ml-2 h-5 w-5" />
                   </Link>
                 </Button>
                 <Button asChild variant="secondary" size="lg">
-                  <Link href="/community">
-                    Join Community
+                  <Link href="/create">
+                    Create Your Product <Sparkles className="ml-2 h-5 w-5" />
                   </Link>
                 </Button>
               </div>
