@@ -4,7 +4,7 @@ import React from 'react';
 import type { AnalysisResult } from '@/lib/color-analysis';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Check, Palette, X } from 'lucide-react';
+import { ArrowLeft, Check, Palette, X, Heart, Sparkles } from 'lucide-react';
 
 export default function AnalysisResults({ analysis }: { analysis: AnalysisResult }) {
     
@@ -22,6 +22,26 @@ export default function AnalysisResults({ analysis }: { analysis: AnalysisResult
                     </div>
                 ))}
             </div>
+        </div>
+    );
+
+    const renderMakeup = (title: string, items: {category: string, shades: {name: string, hex: string}[]}, icon: React.ReactNode) => (
+        <div className="space-y-4">
+            <h3 className="font-headline text-xl flex items-center">{icon}<span className="ml-2">{title}</span></h3>
+            {items.shades.map(item => (
+                <div key={item.name} className="space-y-2">
+                    <h4 className="font-semibold">{items.category}</h4>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                        <div key={item.name} className="flex items-center space-x-2 rounded-md border p-2">
+                             <div
+                                className="h-6 w-6 rounded-md border"
+                                style={{ backgroundColor: item.hex }}
+                            />
+                            <span className="text-sm">{item.name}</span>
+                        </div>
+                    </div>
+                </div>
+            ))}
         </div>
     );
 
@@ -44,7 +64,41 @@ export default function AnalysisResults({ analysis }: { analysis: AnalysisResult
                 </CardHeader>
                 <CardContent className="space-y-8 p-4">
                     {renderPalette('Recommended Fashion', analysis.recommendations.fashion, <Palette className="text-green-500" />)}
-                    {renderPalette('Recommended Makeup', analysis.recommendations.makeup, <Check className="text-green-500" />)}
+                    
+                    <div className="space-y-4">
+                        <h3 className="font-headline text-xl flex items-center"><Sparkles className="text-pink-500" /><span className="ml-2">Recommended Makeup</span></h3>
+                        
+                        <div className="space-y-2">
+                            <h4 className="font-semibold">Lipstick</h4>
+                            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                                {analysis.recommendations.makeup.lipstick.map((color) => (
+                                    <div key={color.name} className="flex items-center space-x-2 rounded-md border p-2">
+                                        <div
+                                            className="h-6 w-6 rounded-md border"
+                                            style={{ backgroundColor: color.hex }}
+                                        />
+                                        <span className="text-sm">{color.name}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <h4 className="font-semibold">Blush</h4>
+                            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                                {analysis.recommendations.makeup.blush.map((color) => (
+                                    <div key={color.name} className="flex items-center space-x-2 rounded-md border p-2">
+                                        <div
+                                            className="h-6 w-6 rounded-md border"
+                                            style={{ backgroundColor: color.hex }}
+                                        />
+                                        <span className="text-sm">{color.name}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
                     {renderPalette('Colors to Avoid', analysis.recommendations.avoid, <X className="text-red-500" />)}
                 </CardContent>
             </Card>
