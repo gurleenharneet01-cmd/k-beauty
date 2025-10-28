@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Bot, FlaskConical, Palette, Beaker, Package, TestTube } from "lucide-react";
+import { Sparkles, Bot, FlaskConical, Package, TestTube } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 export default function CreatePage() {
