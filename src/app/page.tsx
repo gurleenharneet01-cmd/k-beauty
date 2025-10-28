@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useEffect, useState, useRef, useMemo } from 'react';
@@ -8,6 +7,8 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   signOut,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
 } from 'firebase/auth';
 import {
   collection,
@@ -173,6 +174,33 @@ export default function KBeautyApp() {
       setFavorites([]);
     }
   }, [user, db]);
+
+  async function handleSignUp(email, password, displayName) {
+    if (!auth || !db) return;
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      await setDoc(doc(db, 'users', cred.user.uid), {
+        uid: cred.user.uid,
+        email,
+        displayName: displayName || email.split('@')[0],
+        favorites: [],
+        createdAt: serverTimestamp(),
+      });
+      logEvent(db, 'signup', { uid: cred.user.uid });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Sign up error', description: e.message });
+    }
+  }
+
+  async function handleSignIn(email, password) {
+    if (!auth || !db) return;
+    try {
+      const cred = await signInWithEmailAndPassword(auth, email, password);
+      logEvent(db, 'signin', { uid: cred.user.uid });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Sign in error', description: e.message });
+    }
+  }
 
 
   async function handleGoogleSignIn() {
@@ -351,7 +379,7 @@ export default function KBeautyApp() {
               <Button variant="destructive" onClick={handleSignOut}>Sign out</Button>
             </div>
           ) : (
-             <Button variant="outline" onClick={handleGoogleSignIn}>Sign in with Google</Button>
+            <AuthMini onGoogle={handleGoogleSignIn} onEmailSignIn={handleSignIn} onEmailSignUp={handleSignUp} />
           )}
         </nav>
       </header>
@@ -388,16 +416,6 @@ export default function KBeautyApp() {
 
                 <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Card>
-                    <CardHeader><CardTitle className="font-semibold text-lg">Quick Skin Quiz</CardTitle></CardHeader>
-                    <CardContent>
-                      <p className="text-sm">Get a fast read and recommendations.</p>
-                      <div className="mt-3">
-                        <MiniQuiz quiz={quiz} setQuiz={setQuiz} onRun={runQuizAndAnalyze} />
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
                     <CardHeader><CardTitle className="font-semibold text-lg">Try-On (Selfie)</CardTitle></CardHeader>
                     <CardContent>
                       <p className="text-sm">Upload a selfie and preview product swatches (AR placeholder).</p>
@@ -408,6 +426,16 @@ export default function KBeautyApp() {
                           <div style={{ mixBlendMode: 'overlay', backgroundColor: '#EAB3A7' }} className="absolute left-1/4 top-1/2 w-1/2 h-8 rounded-full opacity-50 border"></div>
                         </div>
                       )}
+                    </CardContent>
+                  </Card>
+                
+                  <Card>
+                    <CardHeader><CardTitle className="font-semibold text-lg">Quick Skin Quiz</CardTitle></CardHeader>
+                    <CardContent>
+                      <p className="text-sm">Get a fast read and recommendations.</p>
+                      <div className="mt-3">
+                        <MiniQuiz quiz={quiz} setQuiz={setQuiz} onRun={runQuizAndAnalyze} />
+                      </div>
                     </CardContent>
                   </Card>
                 </div>
@@ -488,47 +516,12 @@ export default function KBeautyApp() {
         </section>
 
         <aside className="space-y-4">
-          <Card className="p-4">
-            <h3 className="font-semibold">Your Favorites</h3>
-            <ul className="mt-2 space-y-2">
-              {favorites.length === 0 && <li className="text-sm text-gray-500">No favorites saved.</li>}
-              {favorites.map(fid => {
-                const p = products.find(x => x.id === fid);
-                if (!p) return null;
-                return (
-                  <li key={fid} className="flex items-center gap-2">
-                    <img src={p.imageUrl} alt="" className="w-12 h-12 rounded object-cover" />
-                    <div className="flex-1">
-                      <div className="text-sm font-medium">{p.title}</div>
-                      <div className="text-xs text-gray-500">{p.brand}</div>
-                    </div>
-                    <Button variant="ghost" size="sm" onClick={() => toggleFavorite(p.id)}>Remove</Button>
-                  </li>
-                );
-              })}
-            </ul>
-          </Card>
-
-          <Card className="p-4">
-            <h3 className="font-semibold">Recommendations</h3>
-            <ul className="mt-2 space-y-2">
-              {recs.length === 0 && <li className="text-sm text-gray-500">Sign in to see personalized picks.</li>}
-              {recs.map(r => (
-                <li key={r.id} className="flex items-center gap-2">
-                  <img src={r.imageUrl} alt="" className="w-12 h-12 rounded object-cover" />
-                  <div className="text-sm">{r.title}</div>
-                </li>
-              ))}
-            </ul>
-          </Card>
-
           {isAdmin && (
             <Card className="p-4">
               <h3 className="font-semibold">Admin</h3>
               <AdminPanel onCreate={adminCreateProduct} onDelete={adminDeleteProduct} products={products} />
             </Card>
           )}
-
         </aside>
       </main>
 
@@ -540,6 +533,27 @@ export default function KBeautyApp() {
 // ------------------
 // Subcomponents
 // ------------------
+
+function AuthMini({ onGoogle, onEmailSignIn, onEmailSignUp }: { onGoogle: () => void, onEmailSignIn: (e: string, p: string) => void, onEmailSignUp: (e: string, p: string, d: string) => void }) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  return (
+    <div className="p-2 flex gap-2 items-center">
+      <Input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
+      <Input placeholder="Password" type="password" value={password} onChange={e => setPassword(e.target.value)} />
+      <Button onClick={() => onEmailSignIn(email, password)}>Sign in</Button>
+      <div className="hidden sm:flex gap-2 items-center">
+        <Input placeholder="Display" value={name} onChange={e => setName(e.target.value)} />
+        <Button variant="ghost" onClick={() => onEmailSignUp(email, password, name)}>Sign up</Button>
+        <Button variant="outline" onClick={onGoogle}>
+            <svg className="w-4 h-4 mr-2" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512"><path fill="currentColor" d="M488 261.8C488 403.3 381.5 512 244 512 111.3 512 0 400.7 0 264.1 0 127.5 111.3 16 244 16c73.1 0 134.3 29.3 178.6 71.7l-63.5 61.8C332.3 125.9 292.1 104 244 104c-82.3 0-149.3 67-149.3 149.3s67 149.3 149.3 149.3c96.1 0 133.3-67.9 138-104.4H244v-74.3h234.3c4.7 25.5 7.7 51.9 7.7 82.5z"></path></svg>
+            Google
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 function FormattedSkinReport({ report }: { report: any }) {
   if (!report) return null;
@@ -614,5 +628,3 @@ function AdminPanel({ onCreate, onDelete, products }: { onCreate: (p: any) => vo
     </div>
   );
 }
-
-    
