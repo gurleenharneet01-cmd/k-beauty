@@ -2,26 +2,24 @@
 
 import React from 'react';
 import type { AnalysisResult } from '@/lib/color-analysis';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
-
+import { ArrowLeft, Check, Palette, X } from 'lucide-react';
 
 export default function AnalysisResults({ analysis }: { analysis: AnalysisResult }) {
     
-    const renderPalette = (title: string, colors: string[]) => (
+    const renderPalette = (title: string, colors: {name: string, hex: string}[], icon: React.ReactNode) => (
         <div className="space-y-4">
-            <h3 className="font-headline text-xl">{title}</h3>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+            <h3 className="font-headline text-xl flex items-center">{icon}<span className="ml-2">{title}</span></h3>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {colors.map((color) => (
-                    <Badge
-                        key={color}
-                        variant="outline"
-                        className="justify-center py-2 text-base"
-                    >
-                        {color}
-                    </Badge>
+                    <div key={color.name} className="flex items-center space-x-2 rounded-md border p-2">
+                         <div
+                            className="h-6 w-6 rounded-md border"
+                            style={{ backgroundColor: color.hex }}
+                        />
+                        <span className="text-sm">{color.name}</span>
+                    </div>
                 ))}
             </div>
         </div>
@@ -44,9 +42,10 @@ export default function AnalysisResults({ analysis }: { analysis: AnalysisResult
                         </div>
                     </div>
                 </CardHeader>
-                <CardContent className="space-y-6 p-4">
-                    {renderPalette('Recommended Fashion Colors', analysis.recommendations.fashion)}
-                    {renderPalette('Recommended Makeup Colors', analysis.recommendations.makeup)}
+                <CardContent className="space-y-8 p-4">
+                    {renderPalette('Recommended Fashion', analysis.recommendations.fashion, <Palette className="text-green-500" />)}
+                    {renderPalette('Recommended Makeup', analysis.recommendations.makeup, <Check className="text-green-500" />)}
+                    {renderPalette('Colors to Avoid', analysis.recommendations.avoid, <X className="text-red-500" />)}
                 </CardContent>
             </Card>
 
