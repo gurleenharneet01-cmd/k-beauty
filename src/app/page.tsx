@@ -4,17 +4,14 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import {
-  getAuth,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signInWithPopup,
   GoogleAuthProvider,
   signOut,
-  onAuthStateChanged,
   type User,
 } from 'firebase/auth';
 import {
-  getFirestore,
   collection,
   doc,
   setDoc,
@@ -22,7 +19,6 @@ import {
   getDoc,
   getDocs,
   query,
-  where,
   orderBy,
   serverTimestamp,
   updateDoc,
@@ -114,7 +110,7 @@ export default function KBeautyApp() {
   const { auth, firestore, user, isUserLoading } = useFirebase();
   const { toast } = useToast();
   const db = firestore;
-  const storage = getStorage();
+  const storage = db ? getStorage() : null;
 
   const [page, setPage] = useState('home');
   const [products, setProducts] = useState<any[]>([]);
