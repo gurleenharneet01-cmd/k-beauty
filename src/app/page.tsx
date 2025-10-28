@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useEffect, useState, useRef, useMemo } from 'react';
@@ -414,7 +415,7 @@ export default function KBeautyApp() {
                 {skinReport && (
                   <div className="mt-6 bg-pink-50 p-4 rounded-lg">
                     <h4 className="font-semibold">Skin Report</h4>
-                    <pre className="text-sm whitespace-pre-wrap">{JSON.stringify(skinReport, null, 2)}</pre>
+                    <FormattedSkinReport report={skinReport} />
                   </div>
                 )}
               </CardContent>
@@ -453,8 +454,7 @@ export default function KBeautyApp() {
                 {skinReport && (
                   <div className="mt-4 bg-pink-50 p-4 rounded">
                     <h3 className="font-semibold">Results</h3>
-                    <p>Types: {skinReport.types.join(', ')}</p>
-                    <p>Recommendations: {skinReport.recommended.join(', ')}</p>
+                    <FormattedSkinReport report={skinReport} />
                   </div>
                 )}
               </CardContent>
@@ -540,6 +540,25 @@ export default function KBeautyApp() {
 // ------------------
 // Subcomponents
 // ------------------
+
+function FormattedSkinReport({ report }: { report: any }) {
+  if (!report) return null;
+
+  if (report.message) {
+    return <p className="text-sm">{report.message}</p>;
+  }
+
+  const types = report.types?.join(', ') || 'N/A';
+  const recs = report.recommended?.join(', ') || 'N/A';
+
+  return (
+    <p className="text-sm">
+      Your skin type appears to be <strong>{types}</strong>. 
+      Based on this, we recommend products with ingredients like <em>{recs}</em>.
+    </p>
+  );
+}
+
 
 function MiniQuiz({ quiz, setQuiz, onRun }: { quiz: any, setQuiz: (q: any) => void, onRun: () => void }) {
   return (
