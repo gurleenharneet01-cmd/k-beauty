@@ -1,14 +1,11 @@
 
-// K-Beauty App — Integrated into Next.js/Firebase
 'use client';
 
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signInWithPopup,
   GoogleAuthProvider,
+  signInWithPopup,
   signOut,
 } from 'firebase/auth';
 import {
@@ -116,7 +113,7 @@ export default function KBeautyApp() {
   const [page, setPage] = useState('home');
   const [products, setProducts] = useState<any[]>([]);
   const [queryTxt, setQueryTxt] = useState('');
-  const [filterTag, setFilterTag] = useState('');
+  const [filterTag, setFilterTag] = useState('all');
   const [favorites, setFavorites] = useState<string[]>([]);
   const [selfieUrl, setSelfieUrl] = useState<string | null>(null);
   const [skinReport, setSkinReport] = useState<any | null>(null);
@@ -176,33 +173,6 @@ export default function KBeautyApp() {
     }
   }, [user, db]);
 
-
-  async function handleSignUp(email, password, displayName) {
-    if (!auth || !db) return;
-    try {
-      const cred = await createUserWithEmailAndPassword(auth, email, password);
-      await setDoc(doc(db, 'users', cred.user.uid), {
-        uid: cred.user.uid,
-        email,
-        displayName: displayName || email.split('@')[0],
-        favorites: [],
-        createdAt: serverTimestamp(),
-      });
-      logEvent(db, 'signup', { uid: cred.user.uid });
-    } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Sign up error', description: e.message });
-    }
-  }
-
-  async function handleSignIn(email, password) {
-    if (!auth) return;
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-      logEvent(db, 'signin', { uid: auth.currentUser?.uid });
-    } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Sign in error', description: e.message });
-    }
-  }
 
   async function handleGoogleSignIn() {
     if (!auth || !db) return;
@@ -343,7 +313,7 @@ export default function KBeautyApp() {
       results = products.filter(p => p.title.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q));
     }
   
-    if (filterTag) {
+    if (filterTag && filterTag !== 'all') {
       results = results.filter(p => (p.tags || []).includes(filterTag));
     }
     
@@ -380,7 +350,7 @@ export default function KBeautyApp() {
               <Button variant="destructive" onClick={handleSignOut}>Sign out</Button>
             </div>
           ) : (
-            <AuthMini onGoogle={handleGoogleSignIn} onEmailSignIn={handleSignIn} onEmailSignUp={handleSignUp} />
+             <Button variant="outline" onClick={handleGoogleSignIn}>Sign in with Google</Button>
           )}
         </nav>
       </header>
@@ -405,7 +375,7 @@ export default function KBeautyApp() {
                         <SelectValue placeholder="All Tags" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All tags</SelectItem>
+                        <SelectItem value="all">All tags</SelectItem>
                         <SelectItem value="serum">serum</SelectItem>
                         <SelectItem value="cream">cream</SelectItem>
                         <SelectItem value="sunscreen">sunscreen</SelectItem>
@@ -570,23 +540,6 @@ export default function KBeautyApp() {
 // ------------------
 // Subcomponents
 // ------------------
-function AuthMini({ onGoogle, onEmailSignIn, onEmailSignUp }: { onGoogle: () => void, onEmailSignIn: (e: string, p: string) => void, onEmailSignUp: (e: string, p: string, d: string) => void }) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
-  return (
-    <div className="p-2 flex gap-2 items-center">
-      <Input className="w-28" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
-      <Input className="w-28" placeholder="Password" type="password" value={password} onChange={e => setPassword(e.target.value)} />
-      <Button size="sm" onClick={() => onEmailSignIn(email, password)}>Sign in</Button>
-      <div className="hidden sm:flex gap-2 items-center">
-        <Input className="w-24" placeholder="Display" value={name} onChange={e => setName(e.target.value)} />
-        <Button variant="outline" size="sm" onClick={() => onEmailSignUp(email, password, name)}>Sign up</Button>
-        <Button variant="outline" size="sm" onClick={onGoogle}>Google</Button>
-      </div>
-    </div>
-  );
-}
 
 function MiniQuiz({ quiz, setQuiz, onRun }: { quiz: any, setQuiz: (q: any) => void, onRun: () => void }) {
   return (
