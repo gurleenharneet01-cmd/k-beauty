@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useFormState } from 'react-dom';
+import { useEffect, useState, useActionState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { analyzeSkinTone, type FormState } from './actions';
 import { AnalysisForm } from './components/analysis-form';
@@ -14,9 +13,8 @@ const initialState: FormState = {
 };
 
 export default function AnalysisPage() {
-  const [state, formAction] = useFormState(analyzeSkinTone, initialState);
+  const [state, formAction, isPending] = useActionState(analyzeSkinTone, initialState);
   const { toast } = useToast();
-  const [isPending, setIsPending] = useState(false);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -26,10 +24,6 @@ export default function AnalysisPage() {
         title: 'Analysis Failed',
         description: state.error,
       });
-      setIsPending(false);
-    }
-    if(state.data){
-        setIsPending(false);
     }
   }, [state, toast]);
 
@@ -47,10 +41,9 @@ export default function AnalysisPage() {
           </div>
           <AnalysisForm 
             formAction={formAction} 
-            setIsPending={setIsPending} 
+            isPending={isPending} 
             imagePreviewUrl={imagePreviewUrl}
             setImagePreviewUrl={setImagePreviewUrl}
-            isPending={isPending}
           />
         </div>
         <div className="min-h-[400px]">

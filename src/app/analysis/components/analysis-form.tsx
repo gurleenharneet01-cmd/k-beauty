@@ -8,13 +8,12 @@ import Image from 'next/image';
 
 interface AnalysisFormProps {
   formAction: (payload: FormData) => void;
-  setIsPending: Dispatch<SetStateAction<boolean>>;
   imagePreviewUrl: string | null;
   setImagePreviewUrl: Dispatch<SetStateAction<string | null>>;
   isPending: boolean;
 }
 
-export function AnalysisForm({ formAction, setIsPending, imagePreviewUrl, setImagePreviewUrl, isPending }: AnalysisFormProps) {
+export function AnalysisForm({ formAction, imagePreviewUrl, setImagePreviewUrl, isPending }: AnalysisFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -28,20 +27,13 @@ export function AnalysisForm({ formAction, setIsPending, imagePreviewUrl, setIma
     }
   };
 
-  const handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setIsPending(true);
-    const formData = new FormData(event.currentTarget);
-    formAction(formData);
-  };
-
   return (
     <Card>
       <CardHeader>
         <CardTitle>Upload Your Photo</CardTitle>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleFormSubmit} className="space-y-4">
+        <form action={formAction} className="space-y-4">
           <div
             className="flex items-center justify-center w-full"
             onClick={() => fileInputRef.current?.click()}
