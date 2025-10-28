@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Bot, FlaskConical, Package, TestTube } from "lucide-react";
+import { Sparkles, BrainCircuit, FlaskConical, Package, TestTube } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 export default function CreatePage() {
@@ -63,7 +63,7 @@ export default function CreatePage() {
         <Card className="max-w-3xl mx-auto p-6 bg-secondary/50">
             <CardHeader className="p-0 mb-4">
                 <div className="text-2xl font-semibold leading-none tracking-tight flex items-center justify-center gap-2">
-                    <Bot /> AI Formulation Assistant
+                    <BrainCircuit /> AI Formulation Assistant
                 </div>
             </CardHeader>
             <CardContent className="p-0">
