@@ -16,10 +16,10 @@ export default function Home() {
             <div className="flex flex-col justify-center space-y-4">
               <div className="space-y-2">
                 <h1 className="text-3xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none font-headline">
-                  From Vision to Reality with GlamLens AI
+                  Welcome to BeautyLab Studio
                 </h1>
                 <p className="max-w-[600px] text-muted-foreground md:text-xl font-body">
-                  Analyze your skin tone to find your perfect colors, then use that inspiration to design and customize your own unique beauty products.
+                  Analyze your skin to discover your perfect colors, then step into the lab to design and formulate your own bespoke cosmetic products from scratch.
                 </p>
               </div>
               <div className="flex flex-col gap-2 min-[400px]:flex-row">
@@ -30,7 +30,7 @@ export default function Home() {
                 </Button>
                 <Button asChild variant="secondary" size="lg">
                   <Link href="/create">
-                    Create Your Product <Sparkles className="ml-2 h-5 w-5" />
+                    Enter the BeautyLab <Sparkles className="ml-2 h-5 w-5" />
                   </Link>
                 </Button>
               </div>
