@@ -1,7 +1,7 @@
 // K-Beauty App — Integrated into Next.js/Firebase
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import {
   createUserWithEmailAndPassword,
@@ -33,6 +33,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import Fuse from 'fuse.js';
 
 
 // ------------------
@@ -325,13 +326,29 @@ export default function KBeautyApp() {
   useEffect(() => {
     if (user) loadRecommendations();
   }, [user]);
+  
+  const fuse = useMemo(() => {
+    if (products.length > 0) {
+      return new Fuse(products, { keys: ['name', 'brand', 'tags'], threshold: 0.35 });
+    }
+    return null;
+  }, [products]);
 
-  const visibleProducts = products.filter(p => {
-    const q = queryTxt.toLowerCase();
-    if (q && !(p.title.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q))) return false;
-    if (filterTag && !(p.tags || []).includes(filterTag)) return false;
-    return true;
-  });
+  const visibleProducts = useMemo(() => {
+    let results = products;
+    if (queryTxt && fuse) {
+      results = fuse.search(queryTxt).map(x => x.item);
+    } else if (queryTxt) {
+      const q = queryTxt.toLowerCase();
+      results = products.filter(p => p.title.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q));
+    }
+  
+    if (filterTag) {
+      results = results.filter(p => (p.tags || []).includes(filterTag));
+    }
+    
+    return results;
+  }, [queryTxt, filterTag, products, fuse]);
 
   const [routine, setRoutine] = useState<{ id: string, step: string }[]>([]);
   function addToRoutine(step: string) {
@@ -351,7 +368,7 @@ export default function KBeautyApp() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-pink-50 via-white to-pink-100 text-gray-800">
       <header className="max-w-6xl mx-auto p-4 flex items-center justify-between">
-        <h1 className="text-2xl font-extrabold font-headline text-primary-foreground" style={{ color: 'hsl(var(--primary-foreground))' }}>K-Beauty Lab</h1>
+        <h1 className="text-2xl font-extrabold font-headline">K-Beauty Lab</h1>
         <nav className="flex gap-2 items-center">
           <NavButton targetPage='home'>Home</NavButton>
           <NavButton targetPage='catalog'>Catalog</NavButton>
