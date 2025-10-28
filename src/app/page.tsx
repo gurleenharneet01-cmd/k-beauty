@@ -1,278 +1,631 @@
-// K-Glow Starter - adapted for Next.js
+// K-Beauty App — Integrated into Next.js/Firebase
 'use client';
 
-import React, { useEffect, useRef, useState, CSSProperties } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
+import { v4 as uuidv4 } from 'uuid';
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  GoogleAuthProvider,
+  signOut,
+  onAuthStateChanged,
+  type User,
+} from 'firebase/auth';
+import {
+  getFirestore,
+  collection,
+  doc,
+  setDoc,
+  addDoc,
+  getDoc,
+  getDocs,
+  query,
+  where,
+  orderBy,
+  serverTimestamp,
+  updateDoc,
+  deleteDoc,
+  type Firestore,
+} from 'firebase/firestore';
+import { getStorage, ref as sref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { useFirebase } from '@/firebase'; // Use the provider hook
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 
 
-// Minimal inline styles to avoid Tailwind requirement for quick demo
-const styles: { [key: string]: CSSProperties } = {
-  app: { fontFamily: 'Inter, system-ui, Arial, sans-serif', maxWidth: 980, margin: '24px auto', padding: 16 },
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 },
-  grid: { display: 'grid', gridTemplateColumns: '1fr 420px', gap: 18 },
-  card: { border: '1px solid #e6e6e6', borderRadius: 12, padding: 12, marginBottom: '1rem' },
-  productList: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 },
-  productItem: { padding: 10, border: '1px solid #ddd', borderRadius: 8, cursor: 'pointer' },
-  small: { fontSize: 12, color: '#666' },
-  btn: { padding: '8px 12px', borderRadius: 8, border: 'none', cursor: 'pointer', backgroundColor: '#eee' }
-};
+// ------------------
+// Utilities
+// ------------------
+const uid = () => uuidv4().split('-')[0];
 
-// Small sample dataset (3 products). Expand as needed.
+function logEvent(db: Firestore | null, name: string, payload = {}) {
+  console.log(`[event] ${name}`, payload);
+  if (!db) return;
+  // Optionally write to Firestore for analytics
+  try {
+    const col = collection(db, 'analytics');
+    addDoc(col, { name, payload: JSON.stringify(payload), ts: serverTimestamp() });
+  } catch (e) {
+    // ignore in dev
+  }
+}
+
+// ------------------
+// Mock data (used if Firestore empty)
+// ------------------
 const SAMPLE_PRODUCTS = [
   {
-    id: 'p001', name: 'Hydra Glow Serum', brand: 'SeoulLab', category: 'Serum', priceTier: 'mid',
-    images: [], ingredients: 'Butylene Glycol, Niacinamide, Hyaluronic Acid', tags: ['hydrating', 'brightening'], shades: []
+    id: 'p1',
+    title: 'Glass Skin Serum',
+    brand: 'SeoulGlow',
+    price: 28,
+    tags: ['serum', 'hydration', 'glowy'],
+    description: 'Brightening serum for dewy glass-skin finish.',
+    imageUrl: 'https://picsum.photos/seed/p1/200/200',
   },
   {
-    id: 'p002', name: 'Velvet Matte Lip Tint', brand: 'CherryMoon', category: 'Lip', priceTier: 'budget',
-    images: [], ingredients: 'Isododecane, Trimethylsiloxysilicate, Red 7 Lake', tags: ['longwear'],
-    shades: [{ name: '01 Nude', hex: '#c68b7a' }, { name: '05 Cherry', hex: '#b2313a' }]
+    id: 'p2',
+    title: 'Centella Rescue Cream',
+    brand: 'JejuCalm',
+    price: 18,
+    tags: ['cream', 'sensitive'],
+    description: 'Repairing cream with centella asiatica extract.',
+    imageUrl: 'https://picsum.photos/seed/p2/200/200',
   },
   {
-    id: 'p003', name: 'Daily Cushion SPF 50', brand: 'KBeautyCo', category: 'Sunscreen/Makeup', priceTier: 'premium',
-    images: [], ingredients: 'Titanium Dioxide, Zinc Oxide, Niacinamide', tags: ['spf', 'makeup'],
-    shades: [{ name: 'Light', hex: '#f1d0b9' }, { name: 'Medium', hex: '#e3b892' }]
-  }
+    id: 'p3',
+    title: 'SPF 50+ Moist Sunscreen',
+    brand: 'SunBarrier',
+    price: 22,
+    tags: ['sunscreen', 'spf', 'daily'],
+    description: 'Non-greasy daily sunscreen to protect your glow.',
+    imageUrl: 'https://picsum.photos/seed/p3/200/200',
+  },
 ];
 
-// Simple local favorite store using localStorage
-function useLocalFavorites(key = 'kg_favs'){
-  const [favs, setFavs] = useState<string[]>([]);
-
-  useEffect(() => {
-    try {
-      const s = localStorage.getItem(key);
-      if (s) {
-        setFavs(JSON.parse(s));
-      }
-    } catch (e) {
-      console.error('Failed to load favorites from localStorage', e);
-      setFavs([]);
-    }
-  }, [key]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(key, JSON.stringify(favs));
-    } catch (e) {
-      console.error('Failed to save favorites to localStorage', e);
-    }
-  }, [favs, key]);
-
-  const toggle = (id: string) => setFavs(prev => prev.includes(id) ? prev.filter(x=>x!==id) : [...prev, id]);
-  return { favs, toggle };
+// ------------------
+// Simple skin analysis engine (rule-based)
+// ------------------
+function analyzeSkinFromQuiz(answers: Record<string, number>) {
+  const score = Object.values(answers).reduce((a, b) => a + b, 0);
+  const types: string[] = [];
+  if (answers.oiliness >= 3 && answers.acne >= 2) types.push('Acne-Prone');
+  if (answers.dryness >= 3) types.push('Dry');
+  if (answers.sensitivity >= 3) types.push('Sensitive');
+  if (answers.pigmentation >= 2) types.push('Pigmented');
+  if (types.length === 0) types.push('Normal/Combination');
+  const recommended: string[] = [];
+  if (types.includes('Acne-Prone')) recommended.push('light gel cleanser', 'oil-control serum');
+  if (types.includes('Dry')) recommended.push('hydrating serum', 'rich cream');
+  if (types.includes('Sensitive')) recommended.push('centella-based products', 'fragrance-free');
+  if (types.includes('Pigmented')) recommended.push('vitamin C', 'niacinamide');
+  if (types.includes('Normal/Combination')) recommended.push('maintenance sunscreen', 'light serum');
+  return { types, score, recommended };
 }
 
 
-// Lipstick try-on prototype component (client-side overlay using simple canvas + webcam)
-function LipstickTryOn({ product }: { product: any }){
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [activeShade, setActiveShade] = useState(product?.shades?.[0] ?? { name: 'Demo', hex: '#b2313a' });
-  const [opacity, setOpacity] = useState(0.6);
-  const [mirrored, setMirrored] = useState(true);
-  const [running, setRunning] = useState(false);
+export default function KBeautyApp() {
+  const { auth, firestore, user, isUserLoading } = useFirebase();
   const { toast } = useToast();
+  const db = firestore;
+  const storage = getStorage();
 
-  useEffect(() => {
-    setActiveShade(product?.shades?.[0] ?? { name: 'Demo', hex: '#b2313a' });
-  }, [product]);
+  const [page, setPage] = useState('home');
+  const [products, setProducts] = useState<any[]>([]);
+  const [queryTxt, setQueryTxt] = useState('');
+  const [filterTag, setFilterTag] = useState('');
+  const [favorites, setFavorites] = useState<string[]>([]);
+  const [selfieUrl, setSelfieUrl] = useState<string | null>(null);
+  const [skinReport, setSkinReport] = useState<any | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    let stream: MediaStream;
-    async function startVideo(){
-      try{
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 640, height: 480 }, audio: false });
-            if (videoRef.current) {
-                videoRef.current.srcObject = stream;
-                await videoRef.current.play();
-            }
-        } else {
-            throw new Error('getUserMedia not supported');
-        }
-      }catch(e){ 
-        console.error('Camera start failed', e); 
-        toast({
-            variant: "destructive",
-            title: "Camera Error",
-            description: "Could not access the camera. Please check permissions and try again.",
-          });
-          setRunning(false);
-      }
+  async function fetchProducts() {
+    if (!db) return;
+    try {
+      const snap = await getDocs(collection(db, 'products'));
+      const arr = snap.docs.map(d => d.data());
+      setProducts(arr);
+      localStorage.setItem('kb_products', JSON.stringify(arr));
+    } catch (e) {
+      const cached = localStorage.getItem('kb_products');
+      if (cached) setProducts(JSON.parse(cached));
     }
-    if(running) startVideo();
-    return () => { if(stream) { stream.getTracks().forEach(t=>t.stop()); } };
-  }, [running, toast]);
-
-  // Very simple fake-lip overlay: we don't run face mesh here to keep demo dependency-free.
-  // This draws an approximate oval center-bottom of the face box. For production use: integrate MediaPipe FaceMesh or face-api.js.
-  useEffect(() => {
-    let raf: number;
-    function draw(){
-      const v = videoRef.current; const c = canvasRef.current; if(!v || !c) return;
-      const ctx = c.getContext('2d');
-      if (!ctx) return;
-      c.width = v.videoWidth; c.height = v.videoHeight;
-      ctx.save();
-      if(mirrored){ ctx.translate(c.width, 0); ctx.scale(-1, 1); }
-      ctx.clearRect(0,0,c.width,c.height);
-      ctx.drawImage(v, 0, 0, c.width, c.height);
-      // draw lip overlay approx
-      const lx = c.width * 0.45, ly = c.height * 0.62; const lw = c.width * 0.12, lh = c.height * 0.06;
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.fillStyle = activeShade.hex; ctx.globalAlpha = opacity;
-      ctx.beginPath(); ctx.ellipse(lx, ly, lw, lh, 0, 0, Math.PI*2); ctx.fill();
-      ctx.restore();
-      raf = requestAnimationFrame(draw);
-    }
-    if(running && videoRef.current?.HAVE_ENOUGH_DATA) {
-        raf = requestAnimationFrame(draw);
-    }
-    return () => cancelAnimationFrame(raf);
-  }, [running, activeShade, opacity, mirrored]);
-
-  if (product?.category !== 'Lip') {
-      return (
-        <div style={{...styles.card}}>
-            <h3>Lipstick Try-On (Prototype)</h3>
-            <p style={styles.small}>Select a lipstick product to enable the virtual try-on feature.</p>
-        </div>
-      );
   }
 
-  return (
-    <div style={{...styles.card}}>
-      <h3>Lipstick Try-On (Prototype)</h3>
-      <div style={{position: 'relative'}}>
-        <video ref={videoRef} style={{display: running ? 'block' : 'none', width: '100%', borderRadius: 8}} playsInline muted />
-        <canvas ref={canvasRef} style={{width: '100%', borderRadius: 8, background: '#111', display: !running ? 'block' : 'none'}} />
-        {running && <canvas ref={canvasRef} style={{width: '100%', borderRadius: 8, position: 'absolute', top: 0, left: 0}} />}
-
-      </div>
-      <div style={{marginTop: 10, display: 'flex', gap: 8, alignItems: 'center'}}>
-        <button style={styles.btn} onClick={() => setRunning(r => !r)}>{running ? 'Stop' : 'Start Camera'}</button>
-        <label style={styles.small}><input type="checkbox" checked={mirrored} onChange={e=>setMirrored(e.target.checked)} /> Mirror</label>
-      </div>
-      <div style={{marginTop: 10}}>
-        <label style={styles.small}>Shade:</label>
-        <div style={{display: 'flex', gap: 8, marginTop: 6}}>
-          {(product?.shades ?? [activeShade]).map((s:any) => (
-            <button key={s.name} onClick={()=>setActiveShade(s)} style={{width: 24, height: 24, borderRadius: 12, border: '1px solid #ddd', background: s.hex, cursor: 'pointer'}} title={s.name} />
-          ))}
-        </div>
-        <div style={{marginTop:8}}>
-          <label style={styles.small}>Opacity</label>
-          <input type="range" min={0} max={1} step={0.05} value={opacity} onChange={e=>setOpacity(Number(e.target.value))} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ProductCard({ p, onSelect, isFav, toggleFav }: {p: any, onSelect: (p: any) => void, isFav: boolean, toggleFav: (id: string) => void}){
-  return (
-    <div style={styles.productItem} onClick={() => onSelect(p)}>
-      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-        <strong>{p.name}</strong>
-        <button onClick={(e)=>{ e.stopPropagation(); toggleFav(p.id); }} style={{...styles.btn}}>{isFav ? '♥' : '♡'}</button>
-      </div>
-      <div style={styles.small}>{p.brand} • {p.category}</div>
-      <div style={{marginTop:8}}>
-        {p.shades && p.shades.length>0 ? (
-          <div style={{display:'flex', gap:6}}>{p.shades.map((s:any) => <div key={s.name} title={s.name} style={{width:18,height:18, borderRadius:6, background:s.hex, border:'1px solid #ccc'}} />)}</div>
-        ) : <div style={styles.small}>No shades</div>}
-      </div>
-    </div>
-  );
-}
-
-export default function App(){
-  const [products] = useState(SAMPLE_PRODUCTS);
-  const [query, setQuery] = useState('');
-  const [selected, setSelected] = useState(products[1]);
-  const { favs, toggle } = useLocalFavorites();
-  const { toast } = useToast();
-
-  // simple client-side fuzzy search using Fuse.js if installed; fallback to simple includes.
-  const [results, setResults] = useState(products);
-  useEffect(()=>{
-    if(!query) { setResults(products); return; }
-    try{
-      // dynamic import to avoid hard dependency
-      import('fuse.js').then(({ default: Fuse }) => {
-        const fuse = new Fuse(products, { keys: ['name', 'brand', 'tags'], threshold: 0.35 });
-        const r = fuse.search(query).map(x=>x.item);
-        setResults(r);
-      }).catch(()=>{
-        setResults(products.filter(p => p.name.toLowerCase().includes(query.toLowerCase()) || p.brand.toLowerCase().includes(query.toLowerCase())));
-      });
-    }catch(e){ setResults(products.filter(p => p.name.toLowerCase().includes(query.toLowerCase()))); }
-  }, [query, products]);
-
-  const handleResponsiveLayout = () => {
-    if (window.innerWidth < 768) {
-      styles.grid = { display: 'grid', gridTemplateColumns: '1fr', gap: 18 };
-    } else {
-      styles.grid = { display: 'grid', gridTemplateColumns: '1fr 420px', gap: 18 };
+  async function seedProductsIfEmpty() {
+    if (!db) return;
+    try {
+      const snap = await getDocs(collection(db, 'products'));
+      if (!snap.empty) return;
+      for (const p of SAMPLE_PRODUCTS) {
+        await setDoc(doc(db, 'products', p.id), { ...p, createdAt: serverTimestamp() });
+      }
+      console.log('Seeded sample products');
+      fetchProducts();
+    } catch (e) {
+      console.error('Seed error', e);
     }
-  };
+  }
 
   useEffect(() => {
-    handleResponsiveLayout();
-    window.addEventListener('resize', handleResponsiveLayout);
-    return () => window.removeEventListener('resize', handleResponsiveLayout);
-  }, []);
+    if (!db) return;
+    seedProductsIfEmpty();
+    fetchProducts();
+  }, [db]);
+
+
+  useEffect(() => {
+    if (user && db) {
+      getDoc(doc(db, 'users', user.uid))
+        .then(ud => {
+          if (ud.exists()) setFavorites(ud.data().favorites || []);
+        })
+        .catch(console.error);
+    } else {
+      setFavorites([]);
+    }
+  }, [user, db]);
+
+
+  async function handleSignUp(email, password, displayName) {
+    if (!auth || !db) return;
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      await setDoc(doc(db, 'users', cred.user.uid), {
+        uid: cred.user.uid,
+        email,
+        displayName: displayName || email.split('@')[0],
+        favorites: [],
+        createdAt: serverTimestamp(),
+      });
+      logEvent(db, 'signup', { uid: cred.user.uid });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Sign up error', description: e.message });
+    }
+  }
+
+  async function handleSignIn(email, password) {
+    if (!auth) return;
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      logEvent(db, 'signin', { uid: auth.currentUser?.uid });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Sign in error', description: e.message });
+    }
+  }
+
+  async function handleGoogleSignIn() {
+    if (!auth || !db) return;
+    try {
+      const provider = new GoogleAuthProvider();
+      const res = await signInWithPopup(auth, provider);
+      const udoc = await getDoc(doc(db, 'users', res.user.uid));
+      if (!udoc.exists()) {
+        await setDoc(doc(db, 'users', res.user.uid), {
+          uid: res.user.uid,
+          email: res.user.email,
+          displayName: res.user.displayName,
+          favorites: [],
+          createdAt: serverTimestamp(),
+        });
+      }
+      logEvent(db, 'google_signin', { uid: res.user.uid });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Google sign in error', description: e.message });
+    }
+  }
+
+  async function handleSignOut() {
+    if (!auth) return;
+    await signOut(auth);
+    logEvent(db, 'signout', {});
+  }
+
+  async function toggleFavorite(pid: string) {
+    if (!user || !db) return toast({ title: 'Please sign in to save favorites' });
+    const uref = doc(db, 'users', user.uid);
+    const newFavs = favorites.includes(pid) ? favorites.filter(x => x !== pid) : [...favorites, pid];
+    setFavorites(newFavs);
+    try {
+      await updateDoc(uref, { favorites: newFavs });
+    } catch (e) {
+      await setDoc(uref, { uid: user.uid, favorites: newFavs }, { merge: true });
+    }
+    logEvent(db, 'fav_toggle', { uid: user.uid, pid });
+  }
+
+  async function uploadSelfie(file: File) {
+    if (!file || !storage) return;
+    const id = uid();
+    const storageRef = sref(storage, `selfies/${id}-${file.name}`);
+    try {
+      const snapshot = await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(snapshot.ref);
+      setSelfieUrl(url);
+      setSkinReport({ message: 'Selfie uploaded. Use the Skin Quiz for deeper analysis.' });
+      logEvent(db, 'selfie_upload', { uid: user?.uid || 'anon' });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Upload failed', description: e.message });
+    }
+  }
+
+  function handleSelfieInput(ev: React.ChangeEvent<HTMLInputElement>) {
+    const f = ev.target.files?.[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = e => setSelfieUrl(e.target?.result as string);
+    reader.readAsDataURL(f);
+    uploadSelfie(f);
+  }
+
+  async function adminCreateProduct(p: any) {
+    if (!db) return;
+    const idp = p.id || uid();
+    const pd = { ...p, id: idp, createdAt: serverTimestamp() };
+    await setDoc(doc(db, 'products', idp), pd);
+    fetchProducts();
+    logEvent(db, 'admin_create_product', { uid: user?.uid, pid: idp });
+  }
+
+  async function adminDeleteProduct(pid: string) {
+    if (!db) return;
+    await deleteDoc(doc(db, 'products', pid));
+    fetchProducts();
+  }
+
+  const [quiz, setQuiz] = useState({ oiliness: 2, sensitivity: 1, acne: 1, dryness: 1, pigmentation: 0 });
+  function runQuizAndAnalyze() {
+    const report = analyzeSkinFromQuiz(quiz);
+    setSkinReport(report);
+    logEvent(db, 'skin_quiz', { uid: user?.uid, report });
+  }
+
+  const [recs, setRecs] = useState<any[]>([]);
+  async function recommendProductsForUser(userId: string) {
+    if (!db) return [];
+    try {
+      const userDoc = await getDoc(doc(db, 'users', userId));
+      const data = userDoc.exists() ? userDoc.data() : {};
+      const favs = data.favorites || [];
+      if (favs.length === 0) {
+        const q = query(collection(db, 'products'), orderBy('price'));
+        const snap = await getDocs(q);
+        return snap.docs.slice(0, 3).map(d => d.data());
+      }
+      const favTags = new Set<string>();
+      for (const pid of favs) {
+        const pdoc = await getDoc(doc(db, 'products', pid));
+        if (pdoc.exists()) (pdoc.data().tags || []).forEach((t: string) => favTags.add(t));
+      }
+      const results: { score: number, product: any }[] = [];
+      const all = await getDocs(collection(db, 'products'));
+      for (const d of all.docs) {
+        const pd = d.data();
+        if (favs.includes(pd.id)) continue;
+        const score = (pd.tags || []).filter((t: string) => favTags.has(t)).length;
+        if (score > 0) results.push({ score, product: pd });
+      }
+      results.sort((a, b) => b.score - a.score);
+      return results.slice(0, 6).map(r => r.product);
+    } catch (e) {
+      console.error('recommend error', e);
+      return [];
+    }
+  }
+
+
+  async function loadRecommendations() {
+    if (!user) return;
+    const r = await recommendProductsForUser(user.uid);
+    setRecs(r);
+  }
+
+  useEffect(() => {
+    if (user) loadRecommendations();
+  }, [user]);
+
+  const visibleProducts = products.filter(p => {
+    const q = queryTxt.toLowerCase();
+    if (q && !(p.title.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q))) return false;
+    if (filterTag && !(p.tags || []).includes(filterTag)) return false;
+    return true;
+  });
+
+  const [routine, setRoutine] = useState<{ id: string, step: string }[]>([]);
+  function addToRoutine(step: string) {
+    setRoutine(r => [...r, { id: uid(), step }]);
+    logEvent(db, 'routine_add', { step });
+  }
+  function removeRoutine(id: string) {
+    setRoutine(r => r.filter(x => x.id !== id));
+  }
+
+  const isAdmin = user?.email?.endsWith('@glam-lens.com') || false;
+
+  const NavButton = ({ targetPage, children }: { targetPage: string, children: React.ReactNode }) => (
+    <Button variant={page === targetPage ? "secondary" : "ghost"} onClick={() => setPage(targetPage)}>{children}</Button>
+  );
 
   return (
-    <div style={styles.app}>
-      <div style={styles.header}>
-        <h1>K-Glow — Starter</h1>
-        <div>
-          <input placeholder="Search products..." value={query} onChange={e=>setQuery(e.target.value)} style={{padding:8,borderRadius:8,border:'1px solid #ddd'}} />
-        </div>
-      </div>
-
-      <div style={styles.grid}>
-        <div>
-          <div style={{...styles.card, marginBottom: 12}}>
-            <h3>Products</h3>
-            <div style={styles.productList}>
-              {results.map(p => <ProductCard key={p.id} p={p} onSelect={setSelected} isFav={favs.includes(p.id)} toggleFav={toggle} />)}
+    <div className="min-h-screen bg-gradient-to-b from-pink-50 via-white to-pink-100 text-gray-800">
+      <header className="max-w-6xl mx-auto p-4 flex items-center justify-between">
+        <h1 className="text-2xl font-extrabold font-headline text-primary-foreground" style={{ color: 'hsl(var(--primary-foreground))' }}>K-Beauty Lab</h1>
+        <nav className="flex gap-2 items-center">
+          <NavButton targetPage='home'>Home</NavButton>
+          <NavButton targetPage='catalog'>Catalog</NavButton>
+          <NavButton targetPage='skin'>Skin Quiz</NavButton>
+          <NavButton targetPage='routine'>Routine</NavButton>
+          {isUserLoading ? <div>Loading...</div> : user ? (
+            <div className="flex items-center gap-2">
+              <span className="text-sm">Hi, {user.displayName || user.email}</span>
+              <Button variant="destructive" onClick={handleSignOut}>Sign out</Button>
             </div>
-          </div>
+          ) : (
+            <AuthMini onGoogle={handleGoogleSignIn} onEmailSignIn={handleSignIn} onEmailSignUp={handleSignUp} />
+          )}
+        </nav>
+      </header>
 
-          <div style={styles.card}>
-            <h3>Your Favorites</h3>
-            <div style={{display:'flex', gap:8, flexWrap:'wrap'}}>
-              {favs.length===0 ? <div style={styles.small}>No favorites yet</div> : favs.map(id => { const p = products.find(x=>x.id===id); return p ? <div key={id} style={{padding:6,border:'1px solid #eee',borderRadius:8}}>{p.name}</div> : null })}
-            </div>
-          </div>
-        </div>
+      <main className="max-w-6xl mx-auto p-4 grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <section className="lg:col-span-2 space-y-4">
+          {page === 'home' && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-xl font-bold">Welcome to K-Beauty Lab</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm">Try our skin quiz, explore products, build your routine, or upload a selfie for a preview.</p>
 
-        <div>
-          <div style={styles.card}>
-            <h3>Selected</h3>
-            {selected ? (
-              <div>
-                <strong>{selected.name}</strong>
-                <div style={styles.small}>{selected.brand} • {selected.category}</div>
-                <p style={{marginTop:8, fontSize: '0.9rem', color: '#333'}}>{selected.ingredients}</p>
-                <div style={{display:'flex', gap:8, marginTop:8}}>
-                  <button style={styles.btn} onClick={()=>toast({ title: 'Mock Action', description: 'Saved to routine!' })}>Save to routine</button>
-                  <button style={styles.btn} onClick={()=>toast({ title: 'Mock Action', description: 'Added review!' })}>Add review</button>
+                <div className="mt-4 flex gap-4">
+                  <div className="flex-1">
+                    <Input value={queryTxt} onChange={e => setQueryTxt(e.target.value)} placeholder="Search products or brands" className="w-full" />
+                  </div>
+                  <div>
+                    <Select value={filterTag} onValueChange={setFilterTag}>
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="All Tags" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">All tags</SelectItem>
+                        <SelectItem value="serum">serum</SelectItem>
+                        <SelectItem value="cream">cream</SelectItem>
+                        <SelectItem value="sunscreen">sunscreen</SelectItem>
+                        <SelectItem value="sensitive">sensitive</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
+
+                <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Card>
+                    <CardHeader><CardTitle className="font-semibold text-lg">Quick Skin Quiz</CardTitle></CardHeader>
+                    <CardContent>
+                      <p className="text-sm">Get a fast read and recommendations.</p>
+                      <div className="mt-3">
+                        <MiniQuiz quiz={quiz} setQuiz={setQuiz} onRun={runQuizAndAnalyze} />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader><CardTitle className="font-semibold text-lg">Try-On (Selfie)</CardTitle></CardHeader>
+                    <CardContent>
+                      <p className="text-sm">Upload a selfie and preview product swatches (AR placeholder).</p>
+                      <Input type="file" accept="image/*" onChange={handleSelfieInput} ref={fileRef} className="mt-2" />
+                      {selfieUrl && (
+                        <div className="mt-3 relative w-64 h-64 border rounded overflow-hidden">
+                          <img src={selfieUrl} alt="selfie" className="object-cover w-full h-full" />
+                          <div style={{ mixBlendMode: 'overlay', backgroundColor: '#EAB3A7' }} className="absolute left-1/4 top-1/2 w-1/2 h-8 rounded-full opacity-50 border"></div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {skinReport && (
+                  <div className="mt-6 bg-pink-50 p-4 rounded-lg">
+                    <h4 className="font-semibold">Skin Report</h4>
+                    <pre className="text-sm whitespace-pre-wrap">{JSON.stringify(skinReport, null, 2)}</pre>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {page === 'catalog' && (
+            <div>
+              <h2 className="text-xl font-bold mb-4">Catalog</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {visibleProducts.map(p => (
+                  <Card key={p.id} className="flex gap-4 p-4">
+                    <img src={p.imageUrl} alt={p.title} className="w-28 h-28 object-cover rounded" />
+                    <div className="flex-1">
+                      <h3 className="font-semibold">{p.title}</h3>
+                      <p className="text-sm text-gray-500">{p.brand} • ${p.price}</p>
+                      <p className="text-sm mt-2">{p.description}</p>
+                      <div className="mt-2 flex gap-2 items-center">
+                        <Button onClick={() => toggleFavorite(p.id)}>{favorites.includes(p.id) ? 'Saved' : 'Save'}</Button>
+                        <Button variant="ghost" onClick={() => addToRoutine(p.title)}>Add to routine</Button>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
               </div>
-            ) : <div style={styles.small}>Select a product to see details</div>}
-          </div>
-          
-          {selected && <LipstickTryOn product={selected} />}
+            </div>
+          )}
+
+          {page === 'skin' && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-xl font-bold">Skin Quiz & Analysis</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <MiniQuiz quiz={quiz} setQuiz={setQuiz} onRun={runQuizAndAnalyze} />
+                {skinReport && (
+                  <div className="mt-4 bg-pink-50 p-4 rounded">
+                    <h3 className="font-semibold">Results</h3>
+                    <p>Types: {skinReport.types.join(', ')}</p>
+                    <p>Recommendations: {skinReport.recommended.join(', ')}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {page === 'routine' && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-xl font-bold">Routine Builder</CardTitle>
+                <p className="text-sm">Drag & drop is simulated — add steps below.</p>
+              </CardHeader>
+              <CardContent>
+                <div className="mt-3 flex gap-2">
+                  <Button onClick={() => addToRoutine('Cleanse')}>Add Cleanse</Button>
+                  <Button onClick={() => addToRoutine('Tone')}>Add Tone</Button>
+                  <Button onClick={() => addToRoutine('Serum')}>Add Serum</Button>
+                  <Button onClick={() => addToRoutine('Moisturize')}>Add Moisturize</Button>
+                </div>
+                <ul className="mt-4 space-y-2">
+                  {routine.map(r => (
+                    <li key={r.id} className="flex items-center justify-between p-2 border rounded">
+                      <span>{r.step}</span>
+                      <Button variant="ghost" onClick={() => removeRoutine(r.id)}>Remove</Button>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          )}
+        </section>
+
+        <aside className="space-y-4">
+          <Card className="p-4">
+            <h3 className="font-semibold">Your Favorites</h3>
+            <ul className="mt-2 space-y-2">
+              {favorites.length === 0 && <li className="text-sm text-gray-500">No favorites saved.</li>}
+              {favorites.map(fid => {
+                const p = products.find(x => x.id === fid);
+                if (!p) return null;
+                return (
+                  <li key={fid} className="flex items-center gap-2">
+                    <img src={p.imageUrl} alt="" className="w-12 h-12 rounded object-cover" />
+                    <div className="flex-1">
+                      <div className="text-sm font-medium">{p.title}</div>
+                      <div className="text-xs text-gray-500">{p.brand}</div>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => toggleFavorite(p.id)}>Remove</Button>
+                  </li>
+                );
+              })}
+            </ul>
+          </Card>
+
+          <Card className="p-4">
+            <h3 className="font-semibold">Recommendations</h3>
+            <ul className="mt-2 space-y-2">
+              {recs.length === 0 && <li className="text-sm text-gray-500">Sign in to see personalized picks.</li>}
+              {recs.map(r => (
+                <li key={r.id} className="flex items-center gap-2">
+                  <img src={r.imageUrl} alt="" className="w-12 h-12 rounded object-cover" />
+                  <div className="text-sm">{r.title}</div>
+                </li>
+              ))}
+            </ul>
+          </Card>
+
+          {isAdmin && (
+            <Card className="p-4">
+              <h3 className="font-semibold">Admin</h3>
+              <AdminPanel onCreate={adminCreateProduct} onDelete={adminDeleteProduct} products={products} />
+            </Card>
+          )}
+
+        </aside>
+      </main>
+
+      <footer className="max-w-6xl mx-auto p-4 text-center text-xs text-gray-500">Built with ❤️ — K-Beauty Lab prototype</footer>
+    </div>
+  );
+}
+
+// ------------------
+// Subcomponents
+// ------------------
+function AuthMini({ onGoogle, onEmailSignIn, onEmailSignUp }: { onGoogle: () => void, onEmailSignIn: (e: string, p: string) => void, onEmailSignUp: (e: string, p: string, d: string) => void }) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  return (
+    <div className="p-2 flex gap-2 items-center">
+      <Input className="w-28" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
+      <Input className="w-28" placeholder="Password" type="password" value={password} onChange={e => setPassword(e.target.value)} />
+      <Button size="sm" onClick={() => onEmailSignIn(email, password)}>Sign in</Button>
+      <div className="hidden sm:flex gap-2 items-center">
+        <Input className="w-24" placeholder="Display" value={name} onChange={e => setName(e.target.value)} />
+        <Button variant="outline" size="sm" onClick={() => onEmailSignUp(email, password, name)}>Sign up</Button>
+        <Button variant="outline" size="sm" onClick={onGoogle}>Google</Button>
+      </div>
+    </div>
+  );
+}
+
+function MiniQuiz({ quiz, setQuiz, onRun }: { quiz: any, setQuiz: (q: any) => void, onRun: () => void }) {
+  return (
+    <div className="space-y-3">
+      {['oiliness', 'sensitivity', 'acne', 'dryness', 'pigmentation'].map(k => (
+        <div key={k}>
+          <label className="block text-sm font-medium capitalize">{k}</label>
+          <input type="range" min="0" max="4" value={quiz[k]} onChange={e => setQuiz({ ...quiz, [k]: Number(e.target.value) })} className="w-full" />
+        </div>
+      ))}
+      <div className="flex gap-2">
+        <Button onClick={onRun}>Run Analysis</Button>
+        <Button variant="ghost" onClick={() => setQuiz({ oiliness: 2, sensitivity: 1, acne: 1, dryness: 1, pigmentation: 0 })}>Reset</Button>
+      </div>
+    </div>
+  );
+}
+
+function AdminPanel({ onCreate, onDelete, products }: { onCreate: (p: any) => void, onDelete: (pid: string) => void, products: any[] }) {
+  const [form, setForm] = useState({ title: '', brand: '', price: 0, tags: '', description: '', imageUrl: '' });
+  async function submit() {
+    const p = { ...form, tags: form.tags.split(',').map(t => t.trim()), price: Number(form.price) };
+    await onCreate(p);
+    setForm({ title: '', brand: '', price: 0, tags: '', description: '', imageUrl: '' });
+  }
+  return (
+    <div>
+      <div className="space-y-2">
+        <Input placeholder="Title" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
+        <Input placeholder="Brand" value={form.brand} onChange={e => setForm({ ...form, brand: e.target.value })} />
+        <Input placeholder="Price" type="number" value={form.price} onChange={e => setForm({ ...form, price: Number(e.target.value) })} />
+        <Input placeholder="Tags (comma)" value={form.tags} onChange={e => setForm({ ...form, tags: e.target.value })} />
+        <Input placeholder="Image URL" value={form.imageUrl} onChange={e => setForm({ ...form, imageUrl: e.target.value })} />
+        <Textarea placeholder="Description" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
+        <div className="flex gap-2">
+          <Button onClick={submit}>Create</Button>
         </div>
       </div>
 
-      <footer style={{marginTop:20, textAlign:'center', color:'#777'}}>
-        Prototype • All processing local — no backend required for demo
-      </footer>
+      <div className="mt-4">
+        <h4 className="font-semibold">Existing Products</h4>
+        <ul className="space-y-2 mt-2">
+          {products.map(p => (
+            <li key={p.id} className="flex items-center justify-between border p-2 rounded">
+              <div>{p.title} ({p.brand})</div>
+              <div className="flex gap-2">
+                <Button variant="ghost" size="sm" onClick={() => onDelete(p.id)}>Delete</Button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }
