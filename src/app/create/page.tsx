@@ -52,9 +52,9 @@ export default function CreatePage() {
       <div className="mt-12 text-center">
         <Card className="max-w-3xl mx-auto p-6 bg-secondary/50">
             <CardHeader className="p-0 mb-4">
-                <CardTitle className="flex items-center justify-center gap-2">
+                <div className="text-2xl font-semibold leading-none tracking-tight flex items-center justify-center gap-2">
                     <Bot /> AI Formulation Assistant
-                </CardTitle>
+                </div>
             </CardHeader>
             <CardContent className="p-0">
                 <p className="text-muted-foreground mb-4">
