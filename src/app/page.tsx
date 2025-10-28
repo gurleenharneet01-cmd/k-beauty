@@ -1,3 +1,4 @@
+
 // K-Beauty App — Integrated into Next.js/Firebase
 'use client';
 
@@ -9,7 +10,6 @@ import {
   signInWithPopup,
   GoogleAuthProvider,
   signOut,
-  type User,
 } from 'firebase/auth';
 import {
   collection,
@@ -121,6 +121,13 @@ export default function KBeautyApp() {
   const [selfieUrl, setSelfieUrl] = useState<string | null>(null);
   const [skinReport, setSkinReport] = useState<any | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const fuse = useMemo(() => {
+    if (products.length > 0) {
+      return new Fuse(products, { keys: ['name', 'brand', 'tags'], threshold: 0.35 });
+    }
+    return null;
+  }, [products]);
 
   async function fetchProducts() {
     if (!db) return;
@@ -327,13 +334,6 @@ export default function KBeautyApp() {
     if (user) loadRecommendations();
   }, [user]);
   
-  const fuse = useMemo(() => {
-    if (products.length > 0) {
-      return new Fuse(products, { keys: ['name', 'brand', 'tags'], threshold: 0.35 });
-    }
-    return null;
-  }, [products]);
-
   const visibleProducts = useMemo(() => {
     let results = products;
     if (queryTxt && fuse) {
@@ -642,3 +642,5 @@ function AdminPanel({ onCreate, onDelete, products }: { onCreate: (p: any) => vo
     </div>
   );
 }
+
+    
