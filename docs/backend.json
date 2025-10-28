@@ -1,0 +1,309 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the GlamLens application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user entity."
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the user.",
+          "format": "email"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Display name of the user."
+        },
+        "favorites": {
+          "type": "array",
+          "description": "References to Product. (Relationship: User 1:N Product)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the user account was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "email"
+      ]
+    },
+    "Product": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Product",
+      "type": "object",
+      "description": "Represents a K-Beauty product available in the catalog.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the product entity."
+        },
+        "title": {
+          "type": "string",
+          "description": "Name of the product."
+        },
+        "brand": {
+          "type": "string",
+          "description": "Brand of the product."
+        },
+        "price": {
+          "type": "number",
+          "description": "Price of the product."
+        },
+        "tags": {
+          "type": "array",
+          "description": "Tags associated with the product.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the product."
+        },
+        "imageUrl": {
+          "type": "string",
+          "description": "URL of the product image.",
+          "format": "uri"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the product was added to the catalog.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "brand",
+        "price"
+      ]
+    },
+    "SkinReport": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "SkinReport",
+      "type": "object",
+      "description": "Represents the results of a skin analysis quiz.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the skin report entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N SkinReport)"
+        },
+        "types": {
+          "type": "array",
+          "description": "Skin types identified in the quiz (e.g., Dry, Sensitive).",
+          "items": {
+            "type": "string"
+          }
+        },
+        "score": {
+          "type": "number",
+          "description": "Overall score from the skin quiz."
+        },
+        "recommended": {
+          "type": "array",
+          "description": "Recommended products based on the quiz results.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the skin report was generated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId"
+      ]
+    },
+    "RoutineStep": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "RoutineStep",
+      "type": "object",
+      "description": "Represents a step in a user's skincare routine.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the routine step entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N RoutineStep)"
+        },
+        "step": {
+          "type": "string",
+          "description": "Description of the routine step (e.g., Cleanse, Tone)."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the routine step was added.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "step"
+      ]
+    },
+    "AnalyticsEvent": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AnalyticsEvent",
+      "type": "object",
+      "description": "Represents an analytics event logged by the application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the analytics event entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the analytics event (e.g., signup, signin)."
+        },
+        "payload": {
+          "type": "string",
+          "description": "Payload associated with the event (JSON Stringified)."
+        },
+        "ts": {
+          "type": "string",
+          "description": "Timestamp indicating when the event occurred.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profile information.  This collection enables path-based ownership for user-specific data.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/products/{productId}",
+        "definition": {
+          "entityName": "Product",
+          "schema": {
+            "$ref": "#/backend/entities/Product"
+          },
+          "description": "Stores product catalog information.  This collection will have a separate security rule to restrict write access to admin users only.",
+          "params": [
+            {
+              "name": "productId",
+              "description": "The unique identifier for the product."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/skinReports/{skinReportId}",
+        "definition": {
+          "entityName": "SkinReport",
+          "schema": {
+            "$ref": "#/backend/entities/SkinReport"
+          },
+          "description": "Stores skin analysis quiz results for each user. Uses path-based ownership.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "skinReportId",
+              "description": "The unique identifier for the skin report."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/routineSteps/{routineStepId}",
+        "definition": {
+          "entityName": "RoutineStep",
+          "schema": {
+            "$ref": "#/backend/entities/RoutineStep"
+          },
+          "description": "Stores skincare routine steps for each user. Uses path-based ownership.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "routineStepId",
+              "description": "The unique identifier for the routine step."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/analytics/{eventId}",
+        "definition": {
+          "entityName": "AnalyticsEvent",
+          "schema": {
+            "$ref": "#/backend/entities/AnalyticsEvent"
+          },
+          "description": "Stores analytics events for tracking user behavior and application usage.  No specific authorization constraints, but can be configured for admin-only access if needed.",
+          "params": [
+            {
+              "name": "eventId",
+              "description": "The unique identifier for the analytics event."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/roles_admin/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Indicates admin role membership. The existence of a document for a user ID in this collection signifies that the user has admin privileges. Existence over content strategy is used here, where only the presence of this document is required to grant access.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to support a K-Beauty application with user accounts, product catalog, skin analysis, and routine building features.  The design prioritizes authorization independence by storing all authorization data directly within the documents or via path-based ownership, avoiding the need for `get()` calls in security rules.  This enables atomic operations and simplifies debugging. Structural segregation ensures that each collection has a homogeneous security posture, and explicit state modeling improves data clarity.  The use of path-based ownership `/users/{userId}/skinReports/{skinReportId}` ensures that each document is owned by a specific user. The `products` collection is globally readable but only writable by admins, which can be verified using a roles collection, e.g. `/roles_admin/{userId}`."
+  }
+}
