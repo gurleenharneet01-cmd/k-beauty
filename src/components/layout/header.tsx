@@ -12,7 +12,16 @@ export function Header() {
           <Palette className="h-6 w-6 text-primary-foreground" style={{ backgroundColor: 'hsl(var(--primary))', padding: '2px', borderRadius: '4px' }} />
           <span className="font-bold font-headline">GlamLens AI</span>
         </Link>
+        <nav className="flex items-center space-x-6 text-sm font-medium">
+            <Link
+                href="/analysis"
+                className="transition-colors hover:text-foreground/80 text-foreground/60"
+            >
+                Analysis
+            </Link>
+        </nav>
       </div>
     </header>
   );
 }
+
