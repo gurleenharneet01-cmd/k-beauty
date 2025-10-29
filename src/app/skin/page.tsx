@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import Link from 'next/link';
-import { Palette } from 'lucide-react';
+import { Palette, Microscope } from 'lucide-react';
 
 localforage.config({ name: 'kbeauty_color_advisor' });
 
@@ -17,6 +17,42 @@ interface QuizState {
   acne: boolean;
   sunburns: boolean;
 }
+
+const MAKEUP_ADVICE: Record<string, { title: string; items: string[] }> = {
+    'Oily / Acne-prone': {
+        title: 'For Oily / Acne-Prone Skin',
+        items: [
+            'Heavy, oil-based foundations: Can clog pores and increase shine.',
+            'Comedogenic ingredients: Look for "non-comedogenic" labels. Avoid things like coconut oil or cocoa butter in makeup.',
+            'Added fragrance: Can sometimes irritate active breakouts.',
+        ],
+    },
+    'Dry': {
+        title: 'For Dry Skin',
+        items: [
+            'Matte-finish foundations: Can emphasize dry patches and fine lines.',
+            'Powder-based products: May absorb too much natural oil, making skin feel tighter.',
+            'High-alcohol setting sprays: Can be stripping and lead to further dryness.',
+        ],
+    },
+    'Sensitive': {
+        title: 'For Sensitive Skin',
+        items: [
+            'Added Fragrance/Perfume: A very common irritant for sensitive skin.',
+            'Essential Oils: Can cause reactions in some individuals.',
+            'Chemical sunscreens (in foundations): Some people react to chemical filters like oxybenzone; mineral sunscreens (zinc, titanium) are often better tolerated.',
+        ],
+    },
+     'Normal / Combination': {
+        title: 'For Normal / Combination Skin',
+        items: [
+            'You have more flexibility! Focus on a balanced routine.',
+            'Pay attention to how your T-zone (oily) and cheeks (drier) react to different products.',
+            'Generally, it\'s still wise to avoid overly harsh or stripping ingredients.'
+        ],
+    },
+};
+
 
 export default function SkinAnalysisPage() {
   const [quiz, setQuiz] = useState<QuizState>({ oily: false, dry: false, sensitive: false, acne: false, sunburns: false });
@@ -50,7 +86,8 @@ export default function SkinAnalysisPage() {
   useEffect(() => {
     setSkinType(detectSkinTypeFromQuiz());
   }, [quiz]);
-
+  
+  const makeupAdvice = skinType ? MAKEUP_ADVICE[skinType] : null;
 
   return (
     <div className="min-h-screen bg-background text-foreground p-4 md:p-6">
@@ -113,15 +150,26 @@ export default function SkinAnalysisPage() {
             </CardContent>
           </Card>
           <Card>
-            <CardHeader><CardTitle>General Skincare Advice</CardTitle></CardHeader>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <Microscope /> Makeup Ingredients to Watch For
+                </CardTitle>
+            </CardHeader>
             <CardContent>
-                <ul className="list-disc list-inside text-sm space-y-2">
-                    <li><span className="font-semibold">Over-exfoliation:</span> Limit to 1–2x/week depending on skin sensitivity.</li>
-                    <li><span className="font-semibold">Mixing Actives:</span> Avoid mixing strong acids and retinoids without guidance.</li>
-                    <li><span className="font-semibold">Alcohol Content:</span> Avoid products with high alcohol content if you are dry or sensitive.</li>
-                    <li><span className="font-semibold">Fragrance:</span> Be cautious with heavy fragrances if you are prone to sensitivity or acne.</li>
-                    <li><span className="font-semibold">Sun Protection:</span> Always wear SPF. Sun damage accelerates aging and pigmentation.</li>
-                </ul>
+                {makeupAdvice ? (
+                    <div>
+                        <h3 className="font-semibold text-primary">{makeupAdvice.title}</h3>
+                        <ul className="list-disc list-inside text-sm space-y-2 mt-2">
+                            {makeupAdvice.items.map((item, index) => (
+                                <li key={index}>{item}</li>
+                            ))}
+                        </ul>
+                    </div>
+                ) : (
+                    <p className="text-sm text-muted-foreground">
+                        Complete the skin quiz to see personalized makeup advice.
+                    </p>
+                )}
             </CardContent>
           </Card>
         </div>
