@@ -3,10 +3,11 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Palette, Gem, Paintbrush, Droplet, Heart } from 'lucide-react';
+import { Palette, Gem, Paintbrush, Droplet, Heart, ArrowRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
 
 // --- Data for Recommendations ---
 
@@ -80,6 +81,7 @@ export default function OutfitPlannerPage() {
                         <Link href="/" className="hover:text-primary transition-colors">Color Analysis</Link>
                         <Link href="/skin" className="hover:text-primary transition-colors">Skin Analysis</Link>
                         <Link href="/outfit" className="text-primary font-semibold">Outfit Planner</Link>
+                        <Link href="/thank-you" className="hover:text-primary transition-colors">Finish</Link>
                     </nav>
                 </header>
 
@@ -146,6 +148,14 @@ export default function OutfitPlannerPage() {
                             </Card>
                         )}
                     </div>
+                </div>
+
+                <div className="text-center">
+                    <Link href="/thank-you">
+                    <Button size="lg" variant="default">
+                        Finish & Save Profile <ArrowRight className="ml-2"/>
+                    </Button>
+                    </Link>
                 </div>
 
                 <footer className="text-center text-sm text-muted-foreground py-4">

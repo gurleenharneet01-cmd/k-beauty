@@ -270,6 +270,7 @@ export default function ColorAnalysisPage() {
             <Link href="/" className="text-primary font-semibold">Color Analysis</Link>
             <Link href="/skin" className="hover:text-primary transition-colors">Skin Analysis</Link>
             <Link href="/outfit" className="hover:text-primary transition-colors">Outfit Planner</Link>
+            <Link href="/thank-you" className="hover:text-primary transition-colors">Finish</Link>
           </nav>
         </header>
 
@@ -440,4 +441,5 @@ export default function ColorAnalysisPage() {
     </div>
   );
 }
+
 

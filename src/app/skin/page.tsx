@@ -183,6 +183,7 @@ export default function SkinAnalysisPage() {
             <Link href="/" className="hover:text-primary transition-colors">Color Analysis</Link>
             <Link href="/skin" className="text-primary font-semibold">Skin Analysis</Link>
             <Link href="/outfit" className="hover:text-primary transition-colors">Outfit Planner</Link>
+            <Link href="/thank-you" className="hover:text-primary transition-colors">Finish</Link>
           </nav>
         </header>
 
