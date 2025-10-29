@@ -1,12 +1,14 @@
+
 'use client';
 
 import React, { useEffect, useRef, useState, ChangeEvent } from 'react';
 import localforage from 'localforage';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
+import { ArrowRight, Palette, Camera } from 'lucide-react';
 
 localforage.config({ name: 'kbeauty_color_advisor' });
 
@@ -19,17 +21,17 @@ const COLOR_PALETTES: Record<string, string[]> = {
 };
 
 const AVOID_PALETTES: Record<string, string[]> = {
-  'Warm Spring': ['#000080', '#4B0082', '#800080', '#A9A9A9', '#000000'], // Avoid dark, cool colors
-  'Warm Autumn': ['#ADD8E6', '#E0FFFF', '#FFB6C1', '#DDA0DD', '#FFFFFF'], // Avoid light, cool pastels
-  'Cool Summer': ['#FFA500', '#FF4500', '#B8860B', '#8B4513', '#FFD700'], // Avoid earthy, warm tones
-  'Cool Winter': ['#F4A460', '#FFDEAD', '#EEE8AA', '#F5DEB3', '#D2B48C'], // Avoid muted, earthy colors
-  'Neutral': [], // Neutrals have a wider range, less to strictly avoid
+    'Warm Spring': ['#000080', '#4B0082', '#800080', '#A9A9A9', '#000000'], // Avoid dark, cool colors
+    'Warm Autumn': ['#ADD8E6', '#E0FFFF', '#FFB6C1', '#DDA0DD', '#FFFFFF'], // Avoid light, cool pastels
+    'Cool Summer': ['#FFA500', '#FF4500', '#B8860B', '#8B4513', '#FFD700'], // Avoid earthy, warm tones
+    'Cool Winter': ['#F4A460', '#FFDEAD', '#EEE8AA', '#F5DEB3', '#D2B48C'], // Avoid muted, earthy colors
+    'Neutral': [], // Neutrals have a wider range, less to strictly avoid
 };
 
 interface ScanResults {
     r: number;
     g: number;
-    b: number;
+b: number;
     brightness: number;
     season: string;
 }
@@ -128,60 +130,87 @@ export default function ColorAnalysisPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-6">
-      <div className="max-w-4xl mx-auto space-y-6">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+      <div className="max-w-5xl mx-auto p-4 md:p-6 space-y-8">
         <header className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold">K-Beauty — Color & Skin Advisor</h1>
-            <p className="text-sm text-gray-500">Find colors that suit you, analyze ingredients, and more.</p>
+          <div className="flex items-center gap-2">
+            <Palette className="text-primary"/>
+            <h1 className="text-2xl font-bold">GlamLens AI</h1>
           </div>
-          <nav className="flex gap-4">
+          <nav className="flex gap-4 items-center">
             <Link href="/" className="text-primary font-semibold">Color Analysis</Link>
-            <Link href="/skin" className="hover:text-primary">Skin Analysis</Link>
+            <Link href="/skin" className="hover:text-primary transition-colors">Skin Analysis</Link>
           </nav>
         </header>
 
-        <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Card>
-            <CardHeader><CardTitle>1) Upload Photo (selfie or inner wrist)</CardTitle></CardHeader>
-            <CardContent>
-              <Input type="file" accept="image/*" onChange={onImage} className="mt-2" />
-              <div className="mt-3">
-                {photo ? <img ref={imgRef} src={photo} alt="uploaded" className="max-h-48 rounded" /> : <div className="h-32 bg-gray-100 rounded flex items-center justify-center text-sm text-gray-400">No photo</div>}
-              </div>
-              <div className="mt-2 flex gap-2">
-                <Button onClick={analyzeColorFromPhoto}>Analyze Color</Button>
-                <Button onClick={() => { setPhoto(null); setScanResults(null); setUndertone(null); setPalette([]); setAvoidPalette([]); }} variant="outline">Reset</Button>
-              </div>
-              <canvas ref={canvasRef} className="hidden" />
-              {scanResults && (
-                <div className="mt-3 text-sm space-y-3">
-                  <div>Detected season: <strong>{scanResults.season}</strong></div>
-                  <div>Avg color: rgb({scanResults.r},{scanResults.g},{scanResults.b}) — brightness {Math.round(scanResults.brightness)}</div>
-                  <div>
-                    <div className="font-semibold">Suggested Palette:</div>
-                    <div className="flex gap-2 mt-1">
-                      {palette.map((c, i) => (<div key={i} style={{ background: c }} className="w-10 h-10 rounded shadow-sm border" title={c}></div>))}
-                    </div>
-                  </div>
-                   {avoidPalette.length > 0 && (
-                    <div>
-                        <div className="font-semibold">Colors to Avoid:</div>
-                        <div className="flex gap-2 mt-1">
-                        {avoidPalette.map((c, i) => (<div key={i} style={{ background: c }} className="w-10 h-10 rounded shadow-sm border" title={c}></div>))}
-                        </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+        <section className="text-center py-10 md:py-16 bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+            <h2 className="text-3xl md:text-4xl font-bold">Discover Your Perfect Colors</h2>
+            <p className="text-lg text-gray-600 dark:text-gray-300 mt-2 max-w-2xl mx-auto">Upload a photo to instantly analyze your skin's undertone and find the shades that make you shine.</p>
         </section>
 
+        <Card className="w-full">
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Camera /> Upload Your Photo</CardTitle>
+                <CardDescription>Upload a selfie or a clear photo of your inner wrist in natural light for the best results.</CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                <div>
+                    <Input type="file" accept="image/*" onChange={onImage} />
+                    <div className="mt-4">
+                        {photo ? <img ref={imgRef} src={photo} alt="uploaded" className="max-h-60 w-full object-cover rounded-lg" /> : <div className="h-60 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center text-sm text-gray-400">Photo Preview</div>}
+                    </div>
+                    <div className="mt-4 flex gap-2">
+                        <Button onClick={analyzeColorFromPhoto} className="w-full">Analyze Color</Button>
+                        <Button onClick={() => { setPhoto(null); setScanResults(null); setUndertone(null); setPalette([]); setAvoidPalette([]); }} variant="outline" className="w-full">Reset</Button>
+                    </div>
+                </div>
+                 <div>
+                    {scanResults && (
+                        <div className="space-y-4 p-4 border rounded-lg bg-gray-50 dark:bg-gray-800">
+                          <h3 className="font-semibold text-lg">Your Analysis Results</h3>
+                          <div>
+                            <p className="text-sm text-muted-foreground">Detected Season</p>
+                            <p className="font-bold text-xl text-primary">{scanResults.season}</p>
+                          </div>
+                          <div className="space-y-2">
+                            <div>
+                                <div className="font-semibold">Suggested Palette:</div>
+                                <div className="flex gap-2 mt-1">
+                                {palette.map((c, i) => (<div key={i} style={{ background: c }} className="w-10 h-10 rounded-full shadow-sm border" title={c}></div>))}
+                                </div>
+                            </div>
+                            {avoidPalette.length > 0 && (
+                                <div>
+                                    <div className="font-semibold">Colors to Avoid:</div>
+                                    <div className="flex gap-2 mt-1">
+                                    {avoidPalette.map((c, i) => (<div key={i} style={{ background: c }} className="w-10 h-10 rounded-full shadow-sm border" title={c}></div>))}
+                                    </div>
+                                </div>
+                            )}
+                          </div>
+                          <div className="text-xs text-muted-foreground pt-2 border-t">
+                            Avg. Color: rgb({scanResults.r},{scanResults.g},{scanResults.b}) &bull; Brightness: {Math.round(scanResults.brightness)}
+                          </div>
+                        </div>
+                    )}
+                 </div>
+            </CardContent>
+        </Card>
+        
+        {scanResults && (
+            <div className="text-center">
+                <Link href="/skin">
+                <Button size="lg" variant="default">
+                    Next: Analyze Your Skin Type <ArrowRight className="ml-2"/>
+                </Button>
+                </Link>
+            </div>
+        )}
+
         <Card>
-            <CardHeader><CardTitle>Save / Export</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Save / Export Profile</CardTitle></CardHeader>
             <CardContent>
-                <div className="mt-2 flex gap-2 items-center">
+                <div className="flex flex-col md:flex-row gap-2 items-center">
                     <Input value={name} onChange={e => setName(e.target.value)} placeholder="Your name (optional)" className="max-w-xs" />
                     <Button onClick={exportProfile} variant="secondary">Export Profile</Button>
                     <Button onClick={() => { localforage.clear(); toast({title: "Local data cleared"}); }} variant="destructive">Clear All Local Data</Button>
@@ -189,7 +218,7 @@ export default function ColorAnalysisPage() {
             </CardContent>
         </Card>
 
-        <footer className="text-center text-sm text-gray-500">
+        <footer className="text-center text-sm text-gray-500 py-4">
             This app is a free, client-side demo. For clinical advice, please consult a certified dermatologist.
         </footer>
       </div>
