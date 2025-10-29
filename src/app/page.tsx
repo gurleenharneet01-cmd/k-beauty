@@ -130,9 +130,9 @@ export default function ColorAnalysisPage() {
   const analyzeIngredients = () => {
     const tokens = ingredients.toLowerCase().split(/[,;\n]/).map(s => s.trim()).filter(Boolean);
     const found = tokens.map(t => {
-      const r = SAFETY_RULES.find(rule => t.includes(rule.keyword));
-      return { ingredient: t, flag: r ? r.flag : 'No specific flags' };
-    });
+        const r = SAFETY_RULES.find(rule => t.includes(rule.keyword));
+        return r ? { ingredient: t, flag: r.flag } : null;
+    }).filter((item): item is { ingredient: string; flag: string } => item !== null);
     setIngFlags(found);
   };
 
