@@ -8,8 +8,9 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
-import { ArrowRight, Palette, Camera, Sparkles, Gem, Paintbrush } from 'lucide-react';
+import { ArrowRight, Palette, Camera, Sparkles, Gem, Paintbrush, Glasses, User as FaceIcon, Loader } from 'lucide-react';
 import { Shirt } from 'lucide-react';
+import { detectFaceShape, type DetectFaceShapeOutput } from '@/ai/flows/detect-face-shape-flow';
 
 localforage.config({ name: 'kbeauty_color_advisor' });
 
@@ -178,6 +179,10 @@ export default function ColorAnalysisPage() {
   const [avoidPalette, setAvoidPalette] = useState<string[]>([]);
   const [scanResults, setScanResults] = useState<ScanResults | null>(null);
   const { toast } = useToast();
+  
+  const [facePhoto, setFacePhoto] = useState<string | null>(null);
+  const [faceShapeResult, setFaceShapeResult] = useState<DetectFaceShapeOutput | null>(null);
+  const [isAnalyzingFace, setIsAnalyzingFace] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -187,21 +192,30 @@ export default function ColorAnalysisPage() {
         setPalette(p.palette || []);
         setAvoidPalette(p.avoidPalette || []);
         if (p.scanResults) setScanResults(p.scanResults);
+        if (p.faceShapeResult) setFaceShapeResult(p.faceShapeResult);
       }
     })();
   }, []);
 
   useEffect(() => {
-    if (undertone || palette.length > 0 || scanResults) {
-        localforage.setItem('profile', { undertone, palette, avoidPalette, scanResults });
+    if (undertone || palette.length > 0 || scanResults || faceShapeResult) {
+        localforage.setItem('profile', { undertone, palette, avoidPalette, scanResults, faceShapeResult });
     }
-  }, [undertone, palette, avoidPalette, scanResults]);
+  }, [undertone, palette, avoidPalette, scanResults, faceShapeResult]);
 
   const onImage = (e: ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;
     const reader = new FileReader();
     reader.onload = () => setPhoto(reader.result as string);
+    reader.readAsDataURL(f);
+  };
+  
+  const onFaceImage = (e: ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = () => setFacePhoto(reader.result as string);
     reader.readAsDataURL(f);
   };
 
@@ -251,6 +265,25 @@ export default function ColorAnalysisPage() {
     };
   };
 
+  const analyzeFaceShape = async () => {
+    if (!facePhoto) {
+      toast({ variant: 'destructive', title: 'Upload a photo of your face first.' });
+      return;
+    }
+    setIsAnalyzingFace(true);
+    setFaceShapeResult(null);
+    try {
+      const result = await detectFaceShape({ photoDataUri: facePhoto });
+      setFaceShapeResult(result);
+    } catch (error) {
+      console.error("Face shape analysis failed:", error);
+      toast({ variant: 'destructive', title: 'Analysis Failed', description: 'Could not analyze the face shape. Please try another photo.' });
+    } finally {
+      setIsAnalyzingFace(false);
+    }
+  };
+
+
   const shapeAdvice = scanResults ? CLOTHING_SHAPE_ADVICE[scanResults.season] : null;
   const hairAdvice = scanResults ? HAIR_COLOR_ADVICE[scanResults.season] : null;
   const makeupAdvice = scanResults ? MAKEUP_ADVICE[scanResults.season] : null;
@@ -281,7 +314,7 @@ export default function ColorAnalysisPage() {
 
         <Card className="w-full">
             <CardHeader>
-                <CardTitle className="flex items-center gap-2"><Camera /> Upload Your Photo</CardTitle>
+                <CardTitle className="flex items-center gap-2"><Camera /> Undertone Analysis</CardTitle>
                 <CardDescription>Upload a selfie or a clear photo of your inner wrist in natural light for the best results.</CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
@@ -328,6 +361,60 @@ export default function ColorAnalysisPage() {
             </CardContent>
         </Card>
         
+        <Card className="w-full">
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2"><FaceIcon /> Face Shape Analysis (AI)</CardTitle>
+                <CardDescription>Upload a clear, front-facing photo to let our AI determine your face shape.</CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                <div>
+                    <Input type="file" accept="image/*" onChange={onFaceImage} />
+                    <div className="mt-4">
+                        {facePhoto ? <img src={facePhoto} alt="face photo" className="max-h-60 w-full object-cover rounded-lg" /> : <div className="h-60 bg-muted rounded-lg flex items-center justify-center text-sm text-muted-foreground">Face Photo Preview</div>}
+                    </div>
+                    <div className="mt-4 flex gap-2">
+                        <Button onClick={analyzeFaceShape} disabled={isAnalyzingFace} className="w-full">
+                          {isAnalyzingFace && <Loader className="animate-spin mr-2" />}
+                          {isAnalyzingFace ? 'Analyzing...' : 'Analyze Face Shape'}
+                        </Button>
+                        <Button onClick={() => { setFacePhoto(null); setFaceShapeResult(null); }} variant="outline" className="w-full">Reset</Button>
+                    </div>
+                </div>
+                 <div>
+                    {isAnalyzingFace && (
+                      <div className="h-full flex flex-col items-center justify-center space-y-4 p-4 border rounded-lg bg-background">
+                        <Loader className="animate-spin text-primary" size={40}/>
+                        <p className="text-muted-foreground">AI is analyzing your face shape...</p>
+                      </div>
+                    )}
+                    {faceShapeResult && (
+                        <div className="space-y-4 p-4 border rounded-lg bg-background">
+                          <h3 className="font-semibold text-lg">Your Face Shape Results</h3>
+                          <div>
+                            <p className="text-sm text-muted-foreground">Detected Face Shape</p>
+                            <p className="font-bold text-xl text-primary">{faceShapeResult.faceShape}</p>
+                            <p className="text-xs text-muted-foreground mt-1">{faceShapeResult.reasoning}</p>
+                          </div>
+                          <div className="space-y-3">
+                            <div>
+                                <h4 className="font-semibold flex items-center gap-2"><Sparkles /> Flattering Hairstyles</h4>
+                                <div className="flex flex-wrap gap-2 mt-2">
+                                  {faceShapeResult.hairstyles.map((style) => (<div key={style} className="px-3 py-1 bg-secondary text-secondary-foreground rounded-full text-sm font-medium">{style}</div>))}
+                                </div>
+                            </div>
+                             <div>
+                                <h4 className="font-semibold flex items-center gap-2"><Glasses /> Best Glasses Shapes</h4>
+                                <div className="flex flex-wrap gap-2 mt-2">
+                                  {faceShapeResult.glasses.map((style) => (<div key={style} className="px-3 py-1 bg-secondary text-secondary-foreground rounded-full text-sm font-medium">{style}</div>))}
+                                </div>
+                            </div>
+                          </div>
+                        </div>
+                    )}
+                 </div>
+            </CardContent>
+        </Card>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {makeupAdvice && (
               <Card>
@@ -441,5 +528,3 @@ export default function ColorAnalysisPage() {
     </div>
   );
 }
-
-
