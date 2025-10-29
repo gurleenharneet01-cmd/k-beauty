@@ -6,8 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import Link from 'next/link';
-import { Textarea } from '@/components/ui/textarea';
-import { Button } from '@/components/ui/button';
+import { Palette } from 'lucide-react';
 
 localforage.config({ name: 'kbeauty_color_advisor' });
 
@@ -19,19 +18,9 @@ interface QuizState {
   sunburns: boolean;
 }
 
-const SAFETY_RULES = [
-  { keyword: 'paraben', flag: 'Potential irritant/preservative' },
-  { keyword: 'fragrance', flag: 'Common sensitizer' },
-  { keyword: 'alcohol', flag: 'Can be drying (depends on type)' },
-  { keyword: 'niacinamide', flag: 'Generally beneficial' },
-  { keyword: 'hyaluron', flag: 'Hydrating' },
-];
-
 export default function SkinAnalysisPage() {
   const [quiz, setQuiz] = useState<QuizState>({ oily: false, dry: false, sensitive: false, acne: false, sunburns: false });
   const [skinType, setSkinType] = useState<string | null>(null);
-  const [ingredients, setIngredients] = useState('');
-  const [ingFlags, setIngFlags] = useState<{ ingredient: string; flag: string }[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -62,35 +51,31 @@ export default function SkinAnalysisPage() {
     setSkinType(detectSkinTypeFromQuiz());
   }, [quiz]);
 
-  const analyzeIngredients = () => {
-    const tokens = ingredients.toLowerCase().split(/[,;\n]/).map(s => s.trim()).filter(Boolean);
-    const found = tokens.map(t => {
-        const r = SAFETY_RULES.find(rule => t.includes(rule.keyword));
-        return { ingredient: t, flag: r ? r.flag : 'Standard ingredient' };
-    });
-    setIngFlags(found);
-  };
-
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-6">
-      <div className="max-w-4xl mx-auto space-y-6">
+    <div className="min-h-screen bg-background text-foreground p-4 md:p-6">
+      <div className="max-w-4xl mx-auto space-y-8">
         <header className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold">K-Beauty — Color & Skin Advisor</h1>
-            <p className="text-sm text-gray-500">Analyze your skin type and learn what to avoid.</p>
+          <div className="flex items-center gap-2">
+            <Palette className="text-primary"/>
+            <h1 className="text-2xl font-bold font-headline">GlamLens AI</h1>
           </div>
-           <nav className="flex gap-4">
-            <Link href="/" className="hover:text-primary">Color Analysis</Link>
+           <nav className="flex gap-4 items-center">
+            <Link href="/" className="hover:text-primary transition-colors">Color Analysis</Link>
             <Link href="/skin" className="text-primary font-semibold">Skin Analysis</Link>
           </nav>
         </header>
 
-        <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <section className="text-center py-10 md:py-16 bg-card rounded-xl shadow-sm border">
+            <h2 className="text-3xl md:text-4xl font-bold font-headline">Understand Your Skin</h2>
+            <p className="text-lg text-muted-foreground mt-2 max-w-2xl mx-auto">Take our quick quiz to identify your skin profile and get personalized advice.</p>
+        </section>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
            <Card>
-            <CardHeader><CardTitle>1) Quick Skin Quiz</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Quick Skin Quiz</CardTitle></CardHeader>
             <CardContent>
-              <div className="mt-2 space-y-3 text-sm">
+              <div className="space-y-4">
                 <div className="flex items-center space-x-2">
                   <Checkbox id="q-oily" checked={quiz.oily} onCheckedChange={c => handleQuizChange('oily', !!c)} />
                   <Label htmlFor="q-oily">I often have shine/oily T-zone</Label>
@@ -112,49 +97,37 @@ export default function SkinAnalysisPage() {
                   <Label htmlFor="q-sunburns">I burn easily in the sun</Label>
                 </div>
               </div>
-              <div className="mt-4">
-                <div>Detected skin profile: <strong>{skinType}</strong></div>
-                <div className="mt-2 text-sm text-gray-500">Personalized tips:</div>
-                <ul className="text-sm mt-1 list-disc list-inside">
+              <div className="mt-6 p-4 bg-accent/50 rounded-lg">
+                <p>Detected skin profile: <strong className="text-primary">{skinType}</strong></p>
+                <div className="mt-4 text-sm text-muted-foreground">Personalized tips:</div>
+                <ul className="text-sm mt-2 list-disc list-inside space-y-1">
                   {skinType === 'Oily' && <li>Use gentle, water-based cleansers and non-comedogenic moisturizers.</li>}
-                  {skinType === 'Oily / Acne-prone' && <><li >Consider products with salicylic acid and niacinamide.</li ><li >Avoid heavy oils and pore-clogging ingredients.</li ></>}
+                  {skinType === 'Oily / Acne-prone' && <><li>Consider products with salicylic acid and niacinamide.</li><li>Avoid heavy oils and pore-clogging ingredients.</li></>}
                   {skinType === 'Dry' && <li>Use occlusive moisturizers, hyaluronic acid serums, and avoid harsh soaps.</li>}
                   {skinType === 'Sensitive' && <li>Patch-test new products and avoid fragrance-heavy formulas.</li>}
                   {skinType === 'Normal / Combination' && <li>Maintain a balanced routine: gentle cleanser, light moisturizer, SPF.</li>}
                   {quiz.sunburns && <li>Use broad-spectrum SPF 30+ daily and reapply when outdoors.</li>}
+                  {!skinType || (skinType === 'Normal / Combination' && !quiz.sunburns) && <li>Answer the quiz to see personalized tips.</li>}
                 </ul>
               </div>
             </CardContent>
           </Card>
           <Card>
-            <CardHeader><CardTitle>2) What to Avoid</CardTitle></CardHeader>
+            <CardHeader><CardTitle>General Skincare Advice</CardTitle></CardHeader>
             <CardContent>
-                <ul className="list-disc list-inside text-sm mt-2 space-y-1">
-                    <li>Avoid over-exfoliation — limit to 1–2x/week depending on skin sensitivity.</li>
-                    <li>Avoid mixing strong acids and retinoids without guidance.</li>
-                    <li>Avoid products with high alcohol content if you are dry or sensitive.</li>
-                    <li>Avoid heavy fragrances if you are prone to sensitivity or acne.</li>
-                    <li>Always wear SPF — sun damage accelerates aging and pigmentation.</li>
+                <ul className="list-disc list-inside text-sm space-y-2">
+                    <li><span className="font-semibold">Over-exfoliation:</span> Limit to 1–2x/week depending on skin sensitivity.</li>
+                    <li><span className="font-semibold">Mixing Actives:</span> Avoid mixing strong acids and retinoids without guidance.</li>
+                    <li><span className="font-semibold">Alcohol Content:</span> Avoid products with high alcohol content if you are dry or sensitive.</li>
+                    <li><span className="font-semibold">Fragrance:</span> Be cautious with heavy fragrances if you are prone to sensitivity or acne.</li>
+                    <li><span className="font-semibold">Sun Protection:</span> Always wear SPF. Sun damage accelerates aging and pigmentation.</li>
                 </ul>
             </CardContent>
           </Card>
-        </section>
+        </div>
 
-        <Card>
-            <CardHeader><CardTitle>Ingredient Scanner</CardTitle></CardHeader>
-            <CardContent>
-                <Textarea value={ingredients} onChange={e => setIngredients(e.target.value)} placeholder="Paste ingredient list separated by commas" rows={4}></Textarea>
-                <div className="mt-2 flex gap-2">
-                <Button onClick={analyzeIngredients}>Scan</Button>
-                <Button onClick={() => { setIngredients(''); setIngFlags([]); }} variant="outline">Clear</Button>
-                </div>
-                <div className="mt-2 text-sm space-y-1 max-h-48 overflow-y-auto">
-                {ingFlags.map((f, i) => (<div key={i} className="p-2 border rounded"><strong >{f.ingredient}</strong >: {f.flag}</div>))}
-                </div>
-            </CardContent>
-        </Card>
 
-        <footer className="text-center text-sm text-gray-500">
+        <footer className="text-center text-sm text-muted-foreground py-4">
             This app is a free, client-side demo. For clinical advice, please consult a certified dermatologist.
         </footer>
       </div>
