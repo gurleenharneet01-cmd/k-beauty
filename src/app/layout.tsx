@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { cn } from '@/lib/utils';
 import { Toaster } from '@/components/ui/toaster';
+import { Header } from '@/components/Header';
 
 export const metadata: Metadata = {
   title: 'GlamLens AI',
@@ -26,6 +27,7 @@ export default function RootLayout({
         )}
       >
         <div className="relative flex min-h-screen flex-col">
+          <Header />
           <main className="flex-1">{children}</main>
         </div>
         <Toaster />

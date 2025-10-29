@@ -8,8 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
-import { ArrowRight, Palette, Camera, Sparkles, Gem, Paintbrush } from 'lucide-react';
-import { Shirt } from 'lucide-react';
+import { ArrowRight, Camera, Sparkles, Gem, Paintbrush, Shirt } from 'lucide-react';
 
 localforage.config({ name: 'kbeauty_color_advisor' });
 
@@ -263,18 +262,6 @@ export default function ColorAnalysisPage() {
     <div className="min-h-screen bg-background text-foreground">
         <canvas ref={canvasRef} className="hidden" />
       <div className="max-w-5xl mx-auto p-4 md:p-6 space-y-8">
-        <header className="flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <Palette className="text-primary"/>
-            <h1 className="text-2xl font-bold font-headline">GlamLens AI</h1>
-          </div>
-          <nav className="flex gap-4 items-center">
-            <Link href="/" className="text-primary font-semibold">Color Analysis</Link>
-            <Link href="/skin" className="hover:text-primary transition-colors">Skin Analysis</Link>
-            <Link href="/outfit" className="hover:text-primary transition-colors">Outfit Planner</Link>
-            <Link href="/thank-you" className="hover:text-primary transition-colors">Finish</Link>
-          </nav>
-        </header>
 
         <section className="text-center py-10 md:py-16 bg-card rounded-xl shadow-sm border">
             <h2 className="text-3xl md:text-4xl font-bold font-headline">Discover Your Perfect Colors</h2>

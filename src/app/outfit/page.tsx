@@ -3,7 +3,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Palette, Gem, Paintbrush, Droplet, Heart, ArrowRight } from 'lucide-react';
+import { Gem, Paintbrush, Droplet, Heart, ArrowRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -72,19 +72,6 @@ export default function OutfitPlannerPage() {
     return (
         <div className="min-h-screen bg-background text-foreground p-4 md:p-6">
             <div className="max-w-4xl mx-auto space-y-8">
-                <header className="flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                        <Palette className="text-primary"/>
-                        <h1 className="text-2xl font-bold font-headline">GlamLens AI</h1>
-                    </div>
-                    <nav className="flex gap-4 items-center">
-                        <Link href="/" className="hover:text-primary transition-colors">Color Analysis</Link>
-                        <Link href="/skin" className="hover:text-primary transition-colors">Skin Analysis</Link>
-                        <Link href="/outfit" className="text-primary font-semibold">Outfit Planner</Link>
-                        <Link href="/thank-you" className="hover:text-primary transition-colors">Finish</Link>
-                    </nav>
-                </header>
-
                 <section className="text-center py-10 md:py-16 bg-card rounded-xl shadow-sm border">
                     <h2 className="text-3xl md:text-4xl font-bold font-headline">Outfit Color Planner</h2>
                     <p className="text-lg text-muted-foreground mt-2 max-w-2xl mx-auto">Select your outfit's main color to get makeup and accessory recommendations.</p>
