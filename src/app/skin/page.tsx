@@ -113,6 +113,21 @@ const DIETARY_ADVICE: Record<string, { title: string; eat: string[]; avoid: stri
         'Sugary snacks and desserts',
     ],
   },
+  sunburns: {
+    title: 'For Skin Prone to Sunburn',
+    eat: [
+      'Tomatoes & Red Peppers (Lycopene)',
+      'Dark Chocolate (Flavonoids)',
+      'Green Tea',
+      'Carrots & Leafy Greens (Beta-carotene)',
+      'Fatty Fish (Omega-3s)',
+    ],
+    avoid: [
+      'Sugary Foods & Drinks',
+      'Processed Meats',
+      'Excessive Alcohol',
+    ],
+  },
 };
 
 
