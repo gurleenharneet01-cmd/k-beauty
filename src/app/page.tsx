@@ -5,7 +5,6 @@ import localforage from 'localforage';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 
@@ -27,14 +26,6 @@ const AVOID_PALETTES: Record<string, string[]> = {
   'Neutral': [], // Neutrals have a wider range, less to strictly avoid
 };
 
-const SAFETY_RULES = [
-  { keyword: 'paraben', flag: 'Potential irritant/preservative' },
-  { keyword: 'fragrance', flag: 'Common sensitizer' },
-  { keyword: 'alcohol', flag: 'Can be drying (depends on type)' },
-  { keyword: 'niacinamide', flag: 'Generally beneficial' },
-  { keyword: 'hyaluron', flag: 'Hydrating' },
-];
-
 interface ScanResults {
     r: number;
     g: number;
@@ -52,8 +43,6 @@ export default function ColorAnalysisPage() {
   const [palette, setPalette] = useState<string[]>([]);
   const [avoidPalette, setAvoidPalette] = useState<string[]>([]);
   const [scanResults, setScanResults] = useState<ScanResults | null>(null);
-  const [ingredients, setIngredients] = useState('');
-  const [ingFlags, setIngFlags] = useState<{ ingredient: string; flag: string }[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -127,15 +116,6 @@ export default function ColorAnalysisPage() {
     };
   };
 
-  const analyzeIngredients = () => {
-    const tokens = ingredients.toLowerCase().split(/[,;\n]/).map(s => s.trim()).filter(Boolean);
-    const found = tokens.map(t => {
-        const r = SAFETY_RULES.find(rule => t.includes(rule.keyword));
-        return r ? { ingredient: t, flag: r.flag } : null;
-    }).filter((item): item is { ingredient: string; flag: string } => item !== null);
-    setIngFlags(found);
-  };
-
   const exportProfile = () => {
     const data = { name, undertone, palette, avoidPalette, scanResults };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -194,20 +174,6 @@ export default function ColorAnalysisPage() {
                   )}
                 </div>
               )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader><CardTitle>2) Ingredient Scanner</CardTitle></CardHeader>
-            <CardContent>
-                <Textarea value={ingredients} onChange={e => setIngredients(e.target.value)} placeholder="Paste ingredient list separated by commas" rows={4}></Textarea>
-                <div className="mt-2 flex gap-2">
-                <Button onClick={analyzeIngredients}>Scan</Button>
-                <Button onClick={() => { setIngredients(''); setIngFlags([]); }} variant="outline">Clear</Button>
-                </div>
-                <div className="mt-2 text-sm space-y-1 max-h-48 overflow-y-auto">
-                {ingFlags.map((f, i) => (<div key={i} className="p-2 border rounded"><strong >{f.ingredient}</strong >: {f.flag}</div>))}
-                </div>
             </CardContent>
           </Card>
         </section>
