@@ -2,11 +2,11 @@
 
 import React, { useEffect, useState } from 'react';
 import localforage from 'localforage';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import Link from 'next/link';
-import { Palette, Microscope } from 'lucide-react';
+import { Palette, Microscope, Leaf } from 'lucide-react';
 
 localforage.config({ name: 'kbeauty_color_advisor' });
 
@@ -53,6 +53,68 @@ const MAKEUP_ADVICE: Record<string, { title: string; items: string[] }> = {
     },
 };
 
+const DIETARY_ADVICE: Record<string, { title: string; eat: string[]; avoid: string[] }> = {
+  acne: {
+    title: 'For Acne-Prone Skin',
+    eat: [
+      'Leafy Greens (Spinach, Kale)',
+      'Berries & Colorful Fruits',
+      'Fatty Fish (Salmon, Mackerel)',
+      'Green Tea',
+      'Probiotic-rich foods (Yogurt, Kefir)',
+    ],
+    avoid: [
+      'High-Glycemic Foods (White bread, Sugary drinks)',
+      'Dairy (for some individuals)',
+      'Processed & Fast Foods',
+    ],
+  },
+  dry: {
+    title: 'For Dry Skin',
+    eat: [
+      'Avocado',
+      'Nuts and Seeds (Walnuts, Flaxseed)',
+      'Sweet Potatoes',
+      'Olive Oil',
+      'Plenty of Water',
+    ],
+    avoid: [
+      'Excessive Caffeine',
+      'High-Sodium Foods',
+      'Alcohol',
+    ],
+  },
+  sensitive: {
+    title: 'For Sensitive & Reactive Skin',
+    eat: [
+      'Turmeric',
+      'Ginger',
+      'Oats',
+      'Cucumber',
+      'Foods rich in Omega-3s',
+    ],
+    avoid: [
+      'Spicy Foods',
+      'Common Allergens (if you have sensitivities)',
+      'Processed Sugars',
+    ],
+  },
+  oily: {
+    title: 'For Oily Skin',
+    eat: [
+        'Cucumbers',
+        'Whole Grains',
+        'Bananas',
+        'Lentils and Beans',
+    ],
+    avoid: [
+        'Fried Foods',
+        'Refined Carbohydrates',
+        'Sugary snacks and desserts',
+    ],
+  },
+};
+
 
 export default function SkinAnalysisPage() {
   const [quiz, setQuiz] = useState<QuizState>({ oily: false, dry: false, sensitive: false, acne: false, sunburns: false });
@@ -88,6 +150,10 @@ export default function SkinAnalysisPage() {
   }, [quiz]);
   
   const makeupAdvice = skinType ? MAKEUP_ADVICE[skinType] : null;
+
+  const relevantDietaryAdvice = Object.keys(quiz)
+    .filter(key => quiz[key as keyof QuizState] && DIETARY_ADVICE[key])
+    .map(key => DIETARY_ADVICE[key]);
 
   return (
     <div className="min-h-screen bg-background text-foreground p-4 md:p-6">
@@ -149,29 +215,68 @@ export default function SkinAnalysisPage() {
               </div>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    <Microscope /> Makeup Ingredients to Watch For
-                </CardTitle>
-            </CardHeader>
-            <CardContent>
-                {makeupAdvice ? (
-                    <div>
-                        <h3 className="font-semibold text-primary">{makeupAdvice.title}</h3>
-                        <ul className="list-disc list-inside text-sm space-y-2 mt-2">
-                            {makeupAdvice.items.map((item, index) => (
-                                <li key={index}>{item}</li>
+          <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <Microscope /> Makeup Ingredients to Watch For
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    {makeupAdvice ? (
+                        <div>
+                            <h3 className="font-semibold text-primary">{makeupAdvice.title}</h3>
+                            <ul className="list-disc list-inside text-sm space-y-2 mt-2">
+                                {makeupAdvice.items.map((item, index) => (
+                                    <li key={index}>{item}</li>
+                                ))}
+                            </ul>
+                        </div>
+                    ) : (
+                        <p className="text-sm text-muted-foreground">
+                            Complete the skin quiz to see personalized makeup advice.
+                        </p>
+                    )}
+                </CardContent>
+              </Card>
+               <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <Leaf /> Dietary Advice for Your Skin
+                    </CardTitle>
+                    <CardDescription>Nutrition can play a role in skin health. Here are some general tips.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {relevantDietaryAdvice.length > 0 ? (
+                        <div className="space-y-4">
+                            {relevantDietaryAdvice.map(advice => (
+                                <div key={advice.title}>
+                                    <h3 className="font-semibold text-primary">{advice.title}</h3>
+                                    <div className="grid grid-cols-2 gap-4 mt-2 text-sm">
+                                        <div>
+                                            <h4 className="font-medium text-green-600">Foods to Enjoy</h4>
+                                            <ul className="list-disc list-inside mt-1">
+                                                {advice.eat.map(food => <li key={food}>{food}</li>)}
+                                            </ul>
+                                        </div>
+                                        <div>
+                                            <h4 className="font-medium text-red-600">Foods to Limit</h4>
+                                            <ul className="list-disc list-inside mt-1">
+                                                {advice.avoid.map(food => <li key={food}>{food}</li>)}
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
                             ))}
-                        </ul>
-                    </div>
-                ) : (
-                    <p className="text-sm text-muted-foreground">
-                        Complete the skin quiz to see personalized makeup advice.
-                    </p>
-                )}
-            </CardContent>
-          </Card>
+                        </div>
+                    ) : (
+                        <p className="text-sm text-muted-foreground">
+                            Select a skin concern in the quiz to see relevant dietary advice.
+                        </p>
+                    )}
+                </CardContent>
+              </Card>
+          </div>
         </div>
 
 
