@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
-import { ArrowRight, Palette, Camera, Sparkles } from 'lucide-react';
+import { ArrowRight, Palette, Camera, Sparkles, Gem, Paintbrush, Lipstick } from 'lucide-react';
 import { Shirt } from 'lucide-react';
 
 localforage.config({ name: 'kbeauty_color_advisor' });
@@ -73,6 +73,91 @@ const HAIR_COLOR_ADVICE: Record<string, { colors: string[]; advice: string }> = 
       colors: ['Natural Brown', 'Beige Blonde', 'Muted Copper', 'Soft Black'],
       advice: 'A wide range of colors can work for you. Stick close to your natural shade or choose muted versions of other tones.',
     },
+};
+
+const MAKEUP_ADVICE: Record<string, {
+    foundation: string;
+    blush: { colors: string[]; advice: string };
+    lipstick: { colors: string[]; advice: string };
+}> = {
+    'Warm Spring': {
+        foundation: 'Look for foundations with a yellow or golden undertone. Sheer or dewy finishes work best.',
+        blush: {
+            colors: ['Peach', 'Coral', 'Warm Pink'],
+            advice: 'Cream blushes in peachy and coral tones give a natural, healthy glow.'
+        },
+        lipstick: {
+            colors: ['Coral Pink', 'Sheer Peach', 'Warm Red'],
+            advice: 'Lipsticks with a glossy or satin finish in vibrant, warm colors will brighten your face.'
+        }
+    },
+    'Warm Autumn': {
+        foundation: 'Choose foundations with golden or beige undertones. Avoid pink or cool-toned bases.',
+        blush: {
+            colors: ['Terracotta', 'Muted Copper', 'Warm Bronze'],
+            advice: 'Earthy, warm blush tones will enhance your natural depth and warmth.'
+        },
+        lipstick: {
+            colors: ['Brick Red', 'Deep Terracotta', 'Spiced Nude'],
+            advice: 'Matte or satin lipsticks in rich, earthy reds and browns are stunning.'
+        }
+    },
+    'Cool Summer': {
+        foundation: 'Select foundations with a pink, blue, or neutral-beige undertone. Avoid overly yellow shades.',
+        blush: {
+            colors: ['Soft Rose', 'Cool Pink', 'Plum'],
+            advice: 'Soft, cool-toned pink and plum blushes provide a delicate, romantic flush.'
+        },
+        lipstick: {
+            colors: ['Rose Pink', 'Berry Mauve', 'Soft Fuchsia'],
+            advice: 'Sheer or crème lipsticks in cool, muted berry and rose tones are your best bet.'
+        }
+    },
+    'Cool Winter': {
+        foundation: 'Foundations with cool or neutral undertones are ideal. Look for shades with a hint of blue or pink.',
+        blush: {
+            colors: ['True Red', 'Deep Rose', 'Cool Berry'],
+            advice: 'Bold, clear blushes create a striking and sophisticated look.'
+        },
+        lipstick: {
+            colors: ['Ruby Red', 'Fuchsia', 'Deep Plum'],
+            advice: 'Make a statement with bold, vibrant lipsticks in true reds, berries, and fuchsias.'
+        }
+    },
+    'Neutral': {
+        foundation: 'You can wear a range of foundations. Test shades on your jawline to find the perfect match.',
+        blush: {
+            colors: ['Dusty Rose', 'Soft Peach', 'Muted Berry'],
+            advice: 'Most blush colors will work. Choose based on whether you want a warmer or cooler look.'
+        },
+        lipstick: {
+            colors: ['Muted Mauve', 'Nude Pink', 'Classic Red'],
+            advice: 'You have a wide variety of choices. Both warm and cool tones can be flattering.'
+        }
+    }
+};
+
+const EARRING_ADVICE: Record<string, { styles: string[]; advice: string }> = {
+    'Warm Spring': {
+        styles: ['Dangling Florals', 'Small Hoops', 'Delicate Drops'],
+        advice: 'Light and airy earrings in yellow gold with warm-colored stones (like coral or turquoise) complement your vibrant look.'
+    },
+    'Warm Autumn': {
+        styles: ['Statement Hoops', 'Earthy Materials', 'Geometric Shapes'],
+        advice: 'Rich, substantial earrings in bronze, copper, or antique gold with materials like wood or amber enhance your earthy tones.'
+    },
+    'Cool Summer': {
+        styles: ['Pearl Studs', 'Silver Drops', 'Delicate Filigree'],
+        advice: 'Elegant and soft designs in silver, white gold, or platinum with cool stones (like aquamarine or sapphire) are ideal.'
+    },
+    'Cool Winter': {
+        styles: ['Bold Studs', 'Long & Sleek Drops', 'Geometric Silver'],
+        advice: 'Sharp, dramatic earrings in bright silver or platinum with contrasting gems (like diamonds or emeralds) create a striking effect.'
+    },
+    'Neutral': {
+        styles: ['Classic Studs', 'Medium Hoops', 'Versatile Metals'],
+        advice: 'You can pull off both gold and silver. Choose earring styles that match your outfit and personal taste.'
+    }
 };
 
 
@@ -168,6 +253,8 @@ export default function ColorAnalysisPage() {
 
   const shapeAdvice = scanResults ? CLOTHING_SHAPE_ADVICE[scanResults.season] : null;
   const hairAdvice = scanResults ? HAIR_COLOR_ADVICE[scanResults.season] : null;
+  const makeupAdvice = scanResults ? MAKEUP_ADVICE[scanResults.season] : null;
+  const earringAdvice = scanResults ? EARRING_ADVICE[scanResults.season] : null;
 
 
   return (
@@ -240,6 +327,54 @@ export default function ColorAnalysisPage() {
         </Card>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {makeupAdvice && (
+              <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><Paintbrush /> Makeup Recommendations</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div>
+                        <h4 className="font-semibold">Foundation</h4>
+                        <p className="text-sm text-muted-foreground">{makeupAdvice.foundation}</p>
+                    </div>
+                    <div>
+                        <h4 className="font-semibold">Blush</h4>
+                        <p className="text-sm text-muted-foreground mb-2">{makeupAdvice.blush.advice}</p>
+                        <div className="flex flex-wrap gap-3">
+                        {makeupAdvice.blush.colors.map((color) => (
+                            <div key={color} className="px-3 py-1 bg-secondary text-secondary-foreground rounded-full text-sm font-medium">{color}</div>
+                        ))}
+                        </div>
+                    </div>
+                     <div>
+                        <h4 className="font-semibold">Lipstick</h4>
+                        <p className="text-sm text-muted-foreground mb-2">{makeupAdvice.lipstick.advice}</p>
+                        <div className="flex flex-wrap gap-3">
+                        {makeupAdvice.lipstick.colors.map((color) => (
+                            <div key={color} className="px-3 py-1 bg-secondary text-secondary-foreground rounded-full text-sm font-medium">{color}</div>
+                        ))}
+                        </div>
+                    </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {earringAdvice && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2"><Gem /> Earring Styles</CardTitle>
+                        <CardDescription>{earringAdvice.advice}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="flex flex-wrap gap-3">
+                        {earringAdvice.styles.map((style) => (
+                            <div key={style} className="px-4 py-2 bg-secondary text-secondary-foreground rounded-full text-sm font-medium">{style}</div>
+                        ))}
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
             {shapeAdvice && (
               <Card>
                 <CardHeader>
@@ -304,3 +439,4 @@ export default function ColorAnalysisPage() {
     </div>
   );
 }
+
