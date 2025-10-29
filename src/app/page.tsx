@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
-import { ArrowRight, Palette, Camera, Sparkles, Gem, Paintbrush, Lipstick } from 'lucide-react';
+import { ArrowRight, Palette, Camera, Sparkles, Gem, Paintbrush } from 'lucide-react';
 import { Shirt } from 'lucide-react';
 
 localforage.config({ name: 'kbeauty_color_advisor' });
@@ -269,6 +269,7 @@ export default function ColorAnalysisPage() {
           <nav className="flex gap-4 items-center">
             <Link href="/" className="text-primary font-semibold">Color Analysis</Link>
             <Link href="/skin" className="hover:text-primary transition-colors">Skin Analysis</Link>
+            <Link href="/outfit" className="hover:text-primary transition-colors">Outfit Planner</Link>
           </nav>
         </header>
 

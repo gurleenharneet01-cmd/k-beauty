@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -181,6 +182,7 @@ export default function SkinAnalysisPage() {
            <nav className="flex gap-4 items-center">
             <Link href="/" className="hover:text-primary transition-colors">Color Analysis</Link>
             <Link href="/skin" className="text-primary font-semibold">Skin Analysis</Link>
+            <Link href="/outfit" className="hover:text-primary transition-colors">Outfit Planner</Link>
           </nav>
         </header>
 
