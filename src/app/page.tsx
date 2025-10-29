@@ -61,7 +61,6 @@ interface ScanResults {
 }
 
 export default function ColorAnalysisPage() {
-  const [name, setName] = useState('');
   const [photo, setPhoto] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
@@ -75,7 +74,6 @@ export default function ColorAnalysisPage() {
     (async () => {
       const p: any = await localforage.getItem('profile');
       if (p) {
-        setName(p.name || '');
         setUndertone(p.undertone || null);
         setPalette(p.palette || []);
         setAvoidPalette(p.avoidPalette || []);
@@ -85,8 +83,8 @@ export default function ColorAnalysisPage() {
   }, []);
 
   useEffect(() => {
-    localforage.setItem('profile', { name, undertone, palette, avoidPalette, scanResults });
-  }, [name, undertone, palette, avoidPalette, scanResults]);
+    localforage.setItem('profile', { undertone, palette, avoidPalette, scanResults });
+  }, [undertone, palette, avoidPalette, scanResults]);
 
   const onImage = (e: ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -142,17 +140,6 @@ export default function ColorAnalysisPage() {
     };
   };
 
-  const exportProfile = () => {
-    const data = { name, undertone, palette, avoidPalette, scanResults };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'kb_profile.json';
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-  
   const shapeAdvice = scanResults ? CLOTHING_SHAPE_ADVICE[scanResults.season] : null;
 
   return (
@@ -257,20 +244,11 @@ export default function ColorAnalysisPage() {
             </div>
         )}
 
-        <Card>
-            <CardHeader><CardTitle>Save / Export Profile</CardTitle></CardHeader>
-            <CardContent>
-                <div className="flex flex-col md:flex-row gap-2 items-center">
-                    <Input value={name} onChange={e => setName(e.target.value)} placeholder="Your name (optional)" className="max-w-xs" />
-                    <Button onClick={exportProfile} variant="secondary">Export Profile</Button>
-                    <Button onClick={() => { localforage.clear(); toast({title: "Local data cleared"}); }} variant="destructive">Clear All Local Data</Button>
-                </div>
-            </CardContent>
-        </Card>
-
         <footer className="text-center text-sm text-gray-500 py-4">
             This app is a free, client-side demo. For clinical advice, please consult a certified dermatologist.
         </footer>
       </div>
     </div>
   );
+
+    
