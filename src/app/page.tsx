@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
-import { ArrowRight, Palette, Camera } from 'lucide-react';
+import { ArrowRight, Palette, Camera, Sparkles } from 'lucide-react';
 import { Shirt } from 'lucide-react';
 
 localforage.config({ name: 'kbeauty_color_advisor' });
@@ -52,6 +52,30 @@ const CLOTHING_SHAPE_ADVICE: Record<string, { necklines: string[]; advice: strin
     },
 };
 
+const HAIR_COLOR_ADVICE: Record<string, { colors: string[]; advice: string }> = {
+    'Warm Spring': {
+      colors: ['Golden Blonde', 'Honey Brown', 'Strawberry Blonde', 'Light Auburn'],
+      advice: 'Warm, golden hues will illuminate your complexion and bring out the natural warmth in your skin.',
+    },
+    'Warm Autumn': {
+      colors: ['Rich Auburn', 'Chocolate Brown', 'Mahogany', 'Caramel Highlights'],
+      advice: 'Deep, rich, and earthy hair colors will complement your natural coloring and add a sophisticated warmth.',
+    },
+    'Cool Summer': {
+      colors: ['Ash Blonde', 'Light Ash Brown', 'Cool Brunette', 'Silver Tones'],
+      advice: 'Cool, ashy tones will harmonize with your soft complexion and prevent any brassiness.',
+    },
+    'Cool Winter': {
+      colors: ['Jet Black', 'Dark Cool Brown', 'Blue-Black', 'Deep Burgundy'],
+      advice: 'Bold, striking and cool-toned hair colors will create a stunning contrast with your skin tone.',
+    },
+    'Neutral': {
+      colors: ['Natural Brown', 'Beige Blonde', 'Muted Copper', 'Soft Black'],
+      advice: 'A wide range of colors can work for you. Stick close to your natural shade or choose muted versions of other tones.',
+    },
+};
+
+
 interface ScanResults {
     r: number;
     g: number;
@@ -83,7 +107,9 @@ export default function ColorAnalysisPage() {
   }, []);
 
   useEffect(() => {
-    localforage.setItem('profile', { undertone, palette, avoidPalette, scanResults });
+    if (undertone || palette.length > 0 || scanResults) {
+        localforage.setItem('profile', { undertone, palette, avoidPalette, scanResults });
+    }
   }, [undertone, palette, avoidPalette, scanResults]);
 
   const onImage = (e: ChangeEvent<HTMLInputElement>) => {
@@ -141,15 +167,17 @@ export default function ColorAnalysisPage() {
   };
 
   const shapeAdvice = scanResults ? CLOTHING_SHAPE_ADVICE[scanResults.season] : null;
+  const hairAdvice = scanResults ? HAIR_COLOR_ADVICE[scanResults.season] : null;
+
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+    <div className="min-h-screen bg-background text-foreground">
         <canvas ref={canvasRef} className="hidden" />
       <div className="max-w-5xl mx-auto p-4 md:p-6 space-y-8">
         <header className="flex justify-between items-center">
           <div className="flex items-center gap-2">
             <Palette className="text-primary"/>
-            <h1 className="text-2xl font-bold">GlamLens AI</h1>
+            <h1 className="text-2xl font-bold font-headline">GlamLens AI</h1>
           </div>
           <nav className="flex gap-4 items-center">
             <Link href="/" className="text-primary font-semibold">Color Analysis</Link>
@@ -157,9 +185,9 @@ export default function ColorAnalysisPage() {
           </nav>
         </header>
 
-        <section className="text-center py-10 md:py-16 bg-white dark:bg-gray-800 rounded-xl shadow-sm">
-            <h2 className="text-3xl md:text-4xl font-bold">Discover Your Perfect Colors</h2>
-            <p className="text-lg text-gray-600 dark:text-gray-300 mt-2 max-w-2xl mx-auto">Upload a photo to instantly analyze your skin's undertone and find the shades that make you shine.</p>
+        <section className="text-center py-10 md:py-16 bg-card rounded-xl shadow-sm border">
+            <h2 className="text-3xl md:text-4xl font-bold font-headline">Discover Your Perfect Colors</h2>
+            <p className="text-lg text-muted-foreground mt-2 max-w-2xl mx-auto">Upload a photo to instantly analyze your skin's undertone and find the shades that make you shine.</p>
         </section>
 
         <Card className="w-full">
@@ -171,7 +199,7 @@ export default function ColorAnalysisPage() {
                 <div>
                     <Input type="file" accept="image/*" onChange={onImage} />
                     <div className="mt-4">
-                        {photo ? <img ref={imgRef} src={photo} alt="uploaded" className="max-h-60 w-full object-cover rounded-lg" /> : <div className="h-60 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center text-sm text-gray-400">Photo Preview</div>}
+                        {photo ? <img ref={imgRef} src={photo} alt="uploaded" className="max-h-60 w-full object-cover rounded-lg" /> : <div className="h-60 bg-muted rounded-lg flex items-center justify-center text-sm text-muted-foreground">Photo Preview</div>}
                     </div>
                     <div className="mt-4 flex gap-2">
                         <Button onClick={analyzeColorFromPhoto} className="w-full">Analyze Color</Button>
@@ -180,7 +208,7 @@ export default function ColorAnalysisPage() {
                 </div>
                  <div>
                     {scanResults && (
-                        <div className="space-y-4 p-4 border rounded-lg bg-gray-50 dark:bg-gray-800">
+                        <div className="space-y-4 p-4 border rounded-lg bg-background">
                           <h3 className="font-semibold text-lg">Your Analysis Results</h3>
                           <div>
                             <p className="text-sm text-muted-foreground">Detected Season</p>
@@ -189,14 +217,14 @@ export default function ColorAnalysisPage() {
                           <div className="space-y-2">
                             <div>
                                 <div className="font-semibold">Suggested Palette:</div>
-                                <div className="flex gap-2 mt-1">
+                                <div className="flex gap-2 mt-1 flex-wrap">
                                 {palette.map((c, i) => (<div key={i} style={{ background: c }} className="w-10 h-10 rounded-full shadow-sm border" title={c}></div>))}
                                 </div>
                             </div>
                             {avoidPalette.length > 0 && (
                                 <div>
                                     <div className="font-semibold">Colors to Avoid:</div>
-                                    <div className="flex gap-2 mt-1">
+                                    <div className="flex gap-2 mt-1 flex-wrap">
                                     {avoidPalette.map((c, i) => (<div key={i} style={{ background: c }} className="w-10 h-10 rounded-full shadow-sm border" title={c}></div>))}
                                     </div>
                                 </div>
@@ -211,29 +239,54 @@ export default function ColorAnalysisPage() {
             </CardContent>
         </Card>
         
-        {shapeAdvice && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Shirt /> Flattering Necklines
-              </CardTitle>
-              <CardDescription>{shapeAdvice.advice}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-3">
-                {shapeAdvice.necklines.map((neckline) => (
-                  <div
-                    key={neckline}
-                    className="px-4 py-2 bg-secondary text-secondary-foreground rounded-full text-sm font-medium"
-                  >
-                    {neckline}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {shapeAdvice && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Shirt /> Flattering Necklines
+                  </CardTitle>
+                  <CardDescription>{shapeAdvice.advice}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-3">
+                    {shapeAdvice.necklines.map((neckline) => (
+                      <div
+                        key={neckline}
+                        className="px-4 py-2 bg-secondary text-secondary-foreground rounded-full text-sm font-medium"
+                      >
+                        {neckline}
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-        
+                </CardContent>
+              </Card>
+            )}
+
+            {hairAdvice && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Sparkles /> Recommended Hair Colors
+                        </CardTitle>
+                        <CardDescription>{hairAdvice.advice}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="flex flex-wrap gap-3">
+                            {hairAdvice.colors.map((color) => (
+                                <div
+                                    key={color}
+                                    className="px-4 py-2 bg-secondary text-secondary-foreground rounded-full text-sm font-medium"
+                                >
+                                    {color}
+                                </div>
+                            ))}
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+        </div>
+
         {scanResults && (
             <div className="text-center">
                 <Link href="/skin">
@@ -244,11 +297,10 @@ export default function ColorAnalysisPage() {
             </div>
         )}
 
-        <footer className="text-center text-sm text-gray-500 py-4">
+        <footer className="text-center text-sm text-muted-foreground py-4">
             This app is a free, client-side demo. For clinical advice, please consult a certified dermatologist.
         </footer>
       </div>
     </div>
   );
-
-    
+}
