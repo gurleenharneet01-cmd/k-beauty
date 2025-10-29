@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { ArrowRight, Palette, Camera } from 'lucide-react';
+import { Shirt } from 'lucide-react';
 
 localforage.config({ name: 'kbeauty_color_advisor' });
 
@@ -28,10 +29,33 @@ const AVOID_PALETTES: Record<string, string[]> = {
     'Neutral': [], // Neutrals have a wider range, less to strictly avoid
 };
 
+const CLOTHING_SHAPE_ADVICE: Record<string, { necklines: string[]; advice: string }> = {
+    'Warm Spring': {
+      necklines: ['Scoop Neck', 'Sweetheart', 'Square Neck'],
+      advice: 'Open and soft necklines complement your fresh, vibrant coloring and create an inviting look.',
+    },
+    'Warm Autumn': {
+      necklines: ['V-Neck', 'Cowl Neck', 'Turtleneck'],
+      advice: 'Defined and structured necklines enhance your rich, earthy tones and create a sophisticated silhouette.',
+    },
+    'Cool Summer': {
+      necklines: ['Boat Neck', 'Round Neck', 'Off-the-Shoulder'],
+      advice: 'Graceful, flowing necklines harmonize with your soft, cool palette for an elegant appearance.',
+    },
+    'Cool Winter': {
+      necklines: ['V-Neck', 'Asymmetrical', 'High Neck'],
+      advice: 'Sharp, dramatic necklines accentuate your bold, crisp coloring and create a striking statement.',
+    },
+    'Neutral': {
+      necklines: ['Crew Neck', 'V-Neck', 'Boat Neck'],
+      advice: 'Classic and versatile necklines work well with your balanced tones, offering a wide range of flattering options.',
+    },
+};
+
 interface ScanResults {
     r: number;
     g: number;
-b: number;
+    b: number;
     brightness: number;
     season: string;
 }
@@ -128,9 +152,12 @@ export default function ColorAnalysisPage() {
     a.click();
     URL.revokeObjectURL(url);
   };
+  
+  const shapeAdvice = scanResults ? CLOTHING_SHAPE_ADVICE[scanResults.season] : null;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+        <canvas ref={canvasRef} className="hidden" />
       <div className="max-w-5xl mx-auto p-4 md:p-6 space-y-8">
         <header className="flex justify-between items-center">
           <div className="flex items-center gap-2">
@@ -197,6 +224,29 @@ export default function ColorAnalysisPage() {
             </CardContent>
         </Card>
         
+        {shapeAdvice && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shirt /> Flattering Necklines
+              </CardTitle>
+              <CardDescription>{shapeAdvice.advice}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-3">
+                {shapeAdvice.necklines.map((neckline) => (
+                  <div
+                    key={neckline}
+                    className="px-4 py-2 bg-secondary text-secondary-foreground rounded-full text-sm font-medium"
+                  >
+                    {neckline}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        
         {scanResults && (
             <div className="text-center">
                 <Link href="/skin">
@@ -224,4 +274,3 @@ export default function ColorAnalysisPage() {
       </div>
     </div>
   );
-}
