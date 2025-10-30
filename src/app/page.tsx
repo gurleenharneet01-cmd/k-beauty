@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
-import { ArrowRight, Camera, Sparkles, Gem, Paintbrush, Shirt } from 'lucide-react';
+import { ArrowRight, Camera, Sparkles, Gem, Paintbrush, Shirt, Upload } from 'lucide-react';
 
 localforage.config({ name: 'kbeauty_color_advisor' });
 
@@ -172,6 +172,7 @@ export default function ColorAnalysisPage() {
   const [photo, setPhoto] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [undertone, setUndertone] = useState<string | null>(null);
   const [palette, setPalette] = useState<string[]>([]);
   const [avoidPalette, setAvoidPalette] = useState<string[]>([]);
@@ -275,7 +276,10 @@ export default function ColorAnalysisPage() {
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
                 <div>
-                    <Input type="file" accept="image/*" onChange={onImage} />
+                    <Input id="file-upload" type="file" accept="image/*" onChange={onImage} ref={fileInputRef} className="hidden" />
+                    <Button onClick={() => fileInputRef.current?.click()} className="w-full mb-4">
+                        <Upload className="mr-2 h-4 w-4" /> Upload Your Pic
+                    </Button>
                     <div className="mt-4">
                         {photo ? <img ref={imgRef} src={photo} alt="uploaded" className="max-h-60 w-full object-cover rounded-lg" /> : <div className="h-60 bg-muted rounded-lg flex items-center justify-center text-sm text-muted-foreground">Photo Preview</div>}
                     </div>
@@ -430,3 +434,5 @@ export default function ColorAnalysisPage() {
     </div>
   );
 }
+
+    
