@@ -6,6 +6,7 @@ export default function Home() {
     <main style={{ textAlign: "center", padding: "50px" }}>
       <h1>K-Beauty Test Page</h1>
       <p>If ads load, a message will appear below 👇</p>
+<script id="aclib" type="text/javascript" src="//acscdn.com/script/aclib.js"></script>
 
       <Script
         src="https://static.adtomatik.com/aclib.js"
