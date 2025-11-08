@@ -294,6 +294,5 @@ export default function SkinAnalysisPage() {
     {`aclib.runAutoTag({ zoneId: '6nheekwkd6' });`}
   </script>
 </div>
-    </div>
   );
 }
