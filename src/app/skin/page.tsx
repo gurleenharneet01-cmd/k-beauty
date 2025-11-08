@@ -287,7 +287,13 @@ export default function SkinAnalysisPage() {
         <footer className="text-center text-sm text-muted-foreground py-4">
             This app is a free, client-side demo. For clinical advice, please consult a certified dermatologist.
         </footer>
-      </div>
+        {/* Adcash AutoTag Script */}
+<div id="adcash-ads">
+  <script async type="text/javascript" src="//6nheekwkd6.adcash.com/aclib.js"></script>
+  <script type="text/javascript">
+    {`aclib.runAutoTag({ zoneId: '6nheekwkd6' });`}
+  </script>
+</div>
     </div>
   );
 }
